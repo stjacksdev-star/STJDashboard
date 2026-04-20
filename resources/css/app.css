@@ -1,0 +1,177 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../vendor/inertiajs/inertia-laravel/resources/js/**/*.js';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.vue';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+:root {
+    --stj-app-bg: #f1f5f9;
+    --stj-surface: #ffffff;
+    --stj-surface-soft: #f8fafc;
+    --stj-surface-hover: #eff6ff;
+    --stj-text: #0f172a;
+    --stj-text-soft: #334155;
+    --stj-muted: #64748b;
+    --stj-border: #e2e8f0;
+    --stj-border-soft: #f1f5f9;
+    --stj-primary: #2563eb;
+    --stj-primary-strong: #1d4ed8;
+    --stj-primary-soft: #dbeafe;
+    --stj-primary-text: #ffffff;
+    --stj-header-bg: #2563eb;
+    --stj-header-text: #ffffff;
+    --stj-header-muted: #bfdbfe;
+    --stj-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme='dark'] {
+    --stj-app-bg: #0f172a;
+    --stj-surface: #111827;
+    --stj-surface-soft: #1e293b;
+    --stj-surface-hover: rgba(59, 130, 246, 0.14);
+    --stj-text: #f8fafc;
+    --stj-text-soft: #cbd5e1;
+    --stj-muted: #94a3b8;
+    --stj-border: #243244;
+    --stj-border-soft: #1f2937;
+    --stj-primary: #3b82f6;
+    --stj-primary-strong: #60a5fa;
+    --stj-primary-soft: rgba(59, 130, 246, 0.18);
+    --stj-primary-text: #ffffff;
+    --stj-header-bg: #1d4ed8;
+    --stj-header-text: #ffffff;
+    --stj-header-muted: #bfdbfe;
+    --stj-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
+html {
+    background: var(--stj-app-bg);
+}
+
+body {
+    @apply antialiased;
+    background: var(--stj-app-bg);
+    color: var(--stj-text);
+}
+
+.app-bg {
+    background: var(--stj-app-bg);
+    color: var(--stj-text);
+}
+
+.app-surface {
+    background: var(--stj-surface);
+    border-color: var(--stj-border);
+    box-shadow: var(--stj-shadow);
+}
+
+.app-surface-soft {
+    background: var(--stj-surface-soft);
+}
+
+.app-text {
+    color: var(--stj-text);
+}
+
+.app-text-soft {
+    color: var(--stj-text-soft);
+}
+
+.app-muted {
+    color: var(--stj-muted);
+}
+
+.app-border {
+    border-color: var(--stj-border);
+}
+
+.app-border-soft {
+    border-color: var(--stj-border-soft);
+}
+
+.app-primary {
+    background: var(--stj-primary);
+    color: var(--stj-primary-text);
+}
+
+.app-primary-text {
+    color: var(--stj-primary);
+}
+
+.app-header {
+    background: var(--stj-header-bg);
+    color: var(--stj-header-text);
+}
+
+.app-header-muted {
+    color: var(--stj-header-muted);
+}
+
+.stj-data-table,
+.stj-data-table.dataTable {
+    color: var(--stj-text);
+}
+
+.dt-container {
+    color: var(--stj-text);
+}
+
+.dt-container .dt-search input,
+.dt-container .dt-length select {
+    background: var(--stj-surface);
+    border: 1px solid var(--stj-border);
+    border-radius: 6px;
+    color: var(--stj-text);
+    min-height: 36px;
+}
+
+.dt-container .dt-search input:focus,
+.dt-container .dt-length select:focus {
+    border-color: var(--stj-primary);
+    outline: 3px solid var(--stj-primary-soft);
+}
+
+.dt-container .dt-info,
+.dt-container .dt-length,
+.dt-container .dt-search {
+    color: var(--stj-muted);
+    font-size: 0.875rem;
+}
+
+table.dataTable > thead > tr > th,
+table.dataTable > thead > tr > td {
+    border-bottom-color: var(--stj-border);
+    color: var(--stj-text);
+}
+
+table.dataTable.row-border > tbody > tr > *,
+table.dataTable.display > tbody > tr > * {
+    border-top-color: var(--stj-border-soft);
+}
+
+table.dataTable.display > tbody > tr:nth-child(odd) > *,
+table.dataTable.display > tbody > tr:nth-child(even) > *,
+table.dataTable.display > tbody > tr:hover > * {
+    background: var(--stj-surface);
+    color: var(--stj-text);
+}
+
+.dt-container .dt-paging .dt-paging-button {
+    border-radius: 6px;
+    color: var(--stj-text) !important;
+}
+
+.dt-container .dt-paging .dt-paging-button.current,
+.dt-container .dt-paging .dt-paging-button.current:hover {
+    background: var(--stj-primary) !important;
+    border-color: var(--stj-primary) !important;
+    color: var(--stj-primary-text) !important;
+}
