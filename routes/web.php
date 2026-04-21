@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Dashboard\CollectionController;
+use App\Http\Controllers\Dashboard\PromotionController;
 use App\Http\Middleware\EnsureCasAuthenticated;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -25,14 +26,21 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.collections.assets.index');
     Route::post('/dashboard-api/collections/{collection}/assets', [CollectionController::class, 'storeAsset'])
         ->name('dashboard-api.collections.assets.store');
+    Route::get('/dashboard-api/promotions', [PromotionController::class, 'index'])
+        ->name('dashboard-api.promotions.index');
+    Route::post('/dashboard-api/promotions', [PromotionController::class, 'store'])
+        ->name('dashboard-api.promotions.store');
+    Route::post('/dashboard-api/promotions/{promotion}/schedule', [PromotionController::class, 'updateSchedule'])
+        ->name('dashboard-api.promotions.schedule.update');
 
     Route::get('/colecciones', fn () => Inertia::render('Collections/Index'))
         ->name('collections.index');
+    Route::get('/promociones', fn () => Inertia::render('Promotions/Index'))
+        ->name('promotions.index');
 
     foreach ([
         '/citas' => 'Citas',
         '/venta' => 'Venta',
-        '/promociones' => 'Promociones',
         '/cupones/mantenimiento' => 'Cupones / Mantenimiento',
         '/cupones/reportes' => 'Cupones / Reportes',
         '/pedidos/gestiones' => 'Pedidos / Gestiones',

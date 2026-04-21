@@ -30,6 +30,96 @@ class DashboardApiClient
     }
 
     /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function promotions(?string $country = null, ?string $status = null): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/promotions', array_filter([
+                'country' => $country,
+                'status' => $status,
+                'limit' => 300,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function createPromotion(array $data, ?UploadedFile $products = null): array
+    {
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson();
+
+        if ($products) {
+            $request = $request->attach('products', fopen($products->getRealPath(), 'rb'), $products->getClientOriginalName());
+        }
+
+        $response = $request->post('/dashboard/promotions', [
+            'country' => $data['country'],
+            'name' => $data['name'],
+            'commercialName' => $data['commercialName'] ?? null,
+            'origin' => $data['origin'],
+            'checkoutType' => $data['checkoutType'] ?? 'TODO',
+            'type' => $data['type'],
+            'promotionType' => $data['promotionType'],
+            'restriction' => $data['restriction'] ?? null,
+            'price' => $data['price'] ?? null,
+            'percentage' => $data['percentage'] ?? null,
+            'startAt' => $data['startAt'],
+            'endAt' => $data['endAt'],
+        ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function updatePromotionSchedule(int $id, array $data): array
+    {
+        $payload = [
+            'commercialName' => $data['commercialName'] ?? null,
+        ];
+
+        if (array_key_exists('startAt', $data)) {
+            $payload['startAt'] = $data['startAt'];
+        }
+
+        if (array_key_exists('endAt', $data)) {
+            $payload['endAt'] = $data['endAt'];
+        }
+
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post("/dashboard/promotions/{$id}/schedule", $payload);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      *
