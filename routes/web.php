@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Dashboard\CollectionController;
+use App\Http\Controllers\Dashboard\OrderController;
 use App\Http\Controllers\Dashboard\PromotionController;
+use App\Http\Controllers\Dashboard\SalesController;
 use App\Http\Middleware\EnsureCasAuthenticated;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -32,22 +35,48 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.promotions.store');
     Route::post('/dashboard-api/promotions/{promotion}/schedule', [PromotionController::class, 'updateSchedule'])
         ->name('dashboard-api.promotions.schedule.update');
+    Route::get('/dashboard-api/promotions/{promotion}/assets', [PromotionController::class, 'assets'])
+        ->name('dashboard-api.promotions.assets.index');
+    Route::post('/dashboard-api/promotions/{promotion}/assets', [PromotionController::class, 'storeAsset'])
+        ->name('dashboard-api.promotions.assets.store');
+    Route::post('/dashboard-api/promotions/assets/{asset}', [PromotionController::class, 'updateAsset'])
+        ->name('dashboard-api.promotions.assets.update');
+    Route::delete('/dashboard-api/promotions/assets/{asset}', [PromotionController::class, 'destroyAsset'])
+        ->name('dashboard-api.promotions.assets.destroy');
+    Route::post('/dashboard-api/promotions/{promotion}/header', [PromotionController::class, 'updateHeader'])
+        ->name('dashboard-api.promotions.header.update');
+    Route::get('/dashboard-api/sales/kpi', [SalesController::class, 'kpi'])
+        ->name('dashboard-api.sales.kpi');
+    Route::get('/dashboard-api/sales/orders', [SalesController::class, 'orders'])
+        ->name('dashboard-api.sales.orders');
+    Route::get('/dashboard-api/orders/reference', [OrderController::class, 'showByReference'])
+        ->name('dashboard-api.orders.reference');
+    Route::get('/dashboard-api/orders/product', [OrderController::class, 'product'])
+        ->name('dashboard-api.orders.product');
+    Route::post('/dashboard-api/orders/lines/{line}', [OrderController::class, 'updateLine'])
+        ->name('dashboard-api.orders.lines.update');
+    Route::post('/dashboard-api/orders/process', [OrderController::class, 'process'])
+        ->name('dashboard-api.orders.process');
 
     Route::get('/colecciones', fn () => Inertia::render('Collections/Index'))
         ->name('collections.index');
     Route::get('/promociones', fn () => Inertia::render('Promotions/Index'))
         ->name('promotions.index');
+    Route::get('/venta', fn () => Inertia::render('Sales/Index'))
+        ->name('sales.index');
+    Route::get('/pedidos/consulta', fn (Request $request) => Inertia::render('Orders/Reference', [
+        'initialCountry' => $request->string('country')->toString(),
+        'initialReference' => $request->string('id')->toString(),
+    ]))->name('orders.reference');
 
     foreach ([
         '/citas' => 'Citas',
-        '/venta' => 'Venta',
         '/cupones/mantenimiento' => 'Cupones / Mantenimiento',
         '/cupones/reportes' => 'Cupones / Reportes',
         '/pedidos/gestiones' => 'Pedidos / Gestiones',
         '/pedidos/pendientes' => 'Pedidos / Pendientes',
         '/pedidos/devoluciones' => 'Pedidos / Devoluciones',
         '/pedidos/busqueda' => 'Pedidos / Busqueda',
-        '/pedidos/consulta' => 'Pedidos / Referencia',
         '/reportes/catalogo' => 'Reportes / Catalogo',
         '/reportes/suscriptores' => 'Reportes / Suscriptores',
         '/reportes/im/venta' => 'Reportes / IM Venta',

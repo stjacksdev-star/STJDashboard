@@ -29,12 +29,30 @@ const createErrors = ref({});
 const createForm = ref(defaultCreateForm());
 const showEditModal = ref(false);
 const editing = ref(false);
+const assetSaving = ref(false);
+const headerSaving = ref(false);
+const assetsLoading = ref(false);
+const deletingAssetId = ref(null);
 const editError = ref('');
 const editErrors = ref({});
 const selectedPromotion = ref(null);
+const assetPromotion = ref(null);
+const editingAsset = ref(null);
+const promotionAssets = ref([]);
+const promotionAssetLink = ref('');
+const assetError = ref('');
+const assetSuccess = ref('');
+const assetImageInput = ref(null);
+const assetMobileImageInput = ref(null);
+const headerImageInput = ref(null);
 const editForm = ref({
+    commercialName: '',
     startAt: '',
     endAt: '',
+});
+const assetForm = ref(defaultAssetForm());
+const headerForm = ref({
+    header: null,
 });
 
 const columns = [
@@ -176,7 +194,149 @@ function handleTableAction(event) {
     }
 
     if (button.dataset.promotionAction === 'assets') {
+        openPromotionAssets(promotion);
         return;
+    }
+}
+
+async function fetchPromotionAssets(promotion) {
+    assetsLoading.value = true;
+    assetError.value = '';
+    assetSuccess.value = '';
+    promotionAssets.value = [];
+    promotionAssetLink.value = '';
+
+    try {
+        const response = await window.axios.get(`/dashboard-api/promotions/${promotion.id}/assets`);
+        promotionAssets.value = response.data.data?.assets || [];
+        promotionAssetLink.value = response.data.data?.link || promotion.link || '';
+        assetPromotion.value = {
+            ...assetPromotion.value,
+            ...(response.data.data?.promotion || {}),
+        };
+    } catch (exception) {
+        assetError.value = exception.response?.data?.message || 'No fue posible cargar los assets.';
+    } finally {
+        assetsLoading.value = false;
+    }
+}
+
+async function submitPromotionHeader() {
+    if (!assetPromotion.value || !canManagePromotionAssets.value || !headerForm.value.header) {
+        return;
+    }
+
+    headerSaving.value = true;
+    assetError.value = '';
+    assetSuccess.value = '';
+
+    const payload = new FormData();
+    payload.append('header', headerForm.value.header);
+
+    try {
+        const response = await window.axios.post(`/dashboard-api/promotions/${assetPromotion.value.id}/header`, payload, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        assetSuccess.value = response.data.message || 'Banner de promocion actualizado correctamente.';
+        assetPromotion.value = {
+            ...assetPromotion.value,
+            ...(response.data.data || {}),
+        };
+        clearHeaderFile();
+        await fetchPromotions();
+    } catch (exception) {
+        assetError.value = firstError(exception.response?.data?.errors)
+            || exception.response?.data?.message
+            || 'No fue posible actualizar el banner de promocion.';
+    } finally {
+        headerSaving.value = false;
+    }
+}
+
+async function submitPromotionAsset() {
+    if (!assetPromotion.value || !canManagePromotionAssets.value) {
+        return;
+    }
+
+    assetSaving.value = true;
+    assetError.value = '';
+    assetSuccess.value = '';
+
+    const payload = new FormData();
+    payload.append('type', assetForm.value.type);
+    payload.append('platform', assetForm.value.platform);
+    payload.append('position', assetForm.value.type === 'LO-MAS-NUEVO' ? assetForm.value.position : '');
+    payload.append('order', assetForm.value.order);
+    payload.append('status', assetForm.value.status);
+    payload.append('startAt', assetForm.value.startAt);
+    payload.append('endAt', assetForm.value.endAt);
+    payload.append('title', assetForm.value.title || '');
+
+    if (assetForm.value.image) {
+        payload.append('image', assetForm.value.image);
+    }
+
+    if (assetForm.value.mobileImage) {
+        payload.append('mobileImage', assetForm.value.mobileImage);
+    }
+
+    try {
+        const url = editingAsset.value
+            ? `/dashboard-api/promotions/assets/${editingAsset.value.id}`
+            : `/dashboard-api/promotions/${assetPromotion.value.id}/assets`;
+        const response = await window.axios.post(url, payload, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        assetSuccess.value = response.data.message || (editingAsset.value ? 'Asset actualizado correctamente.' : 'Asset creado correctamente.');
+        editingAsset.value = null;
+        assetForm.value = defaultAssetForm(assetPromotion.value);
+        clearAssetFiles();
+        await fetchPromotionAssets(assetPromotion.value);
+        await fetchPromotions();
+    } catch (exception) {
+        assetError.value = firstError(exception.response?.data?.errors)
+            || exception.response?.data?.message
+            || 'No fue posible crear el asset.';
+    } finally {
+        assetSaving.value = false;
+    }
+}
+
+async function deletePromotionAsset(asset) {
+    if (!assetPromotion.value || !canManagePromotionAssets.value) {
+        return;
+    }
+
+    if (!window.confirm(`Eliminar asset ${asset.type}?`)) {
+        return;
+    }
+
+    deletingAssetId.value = asset.id;
+    assetError.value = '';
+    assetSuccess.value = '';
+
+    try {
+        const response = await window.axios.delete(`/dashboard-api/promotions/assets/${asset.id}`);
+        assetSuccess.value = response.data.message || 'Asset eliminado correctamente.';
+
+        if (editingAsset.value?.id === asset.id) {
+            cancelAssetEdit();
+        }
+
+        await fetchPromotionAssets(assetPromotion.value);
+        await fetchPromotions();
+    } catch (exception) {
+        assetError.value = firstError(exception.response?.data?.errors)
+            || exception.response?.data?.message
+            || 'No fue posible eliminar el asset.';
+    } finally {
+        deletingAssetId.value = null;
     }
 }
 
@@ -192,8 +352,59 @@ function openEditModal(promotion) {
     showEditModal.value = true;
 }
 
+function openPromotionAssets(promotion) {
+    showEditModal.value = false;
+    selectedPromotion.value = null;
+    assetPromotion.value = promotion;
+    editingAsset.value = null;
+    assetForm.value = defaultAssetForm(promotion);
+    clearAssetFiles();
+    clearHeaderFile();
+    fetchPromotionAssets(promotion);
+}
+
+function closePromotionAssets() {
+    assetPromotion.value = null;
+    assetError.value = '';
+    assetSuccess.value = '';
+    editingAsset.value = null;
+    promotionAssets.value = [];
+    promotionAssetLink.value = '';
+    clearAssetFiles();
+    clearHeaderFile();
+}
+
+function editPromotionAsset(asset) {
+    if (!canManagePromotionAssets.value) {
+        return;
+    }
+
+    editingAsset.value = asset;
+    assetError.value = '';
+    assetSuccess.value = '';
+    assetForm.value = {
+        type: asset.type || 'BANNER',
+        platform: asset.platform || 'WEB',
+        position: asset.position || '',
+        order: asset.order ?? 1,
+        status: asset.status || 'PENDIENTE',
+        startAt: sqlToDatetimeLocal(asset.startAt),
+        endAt: sqlToDatetimeLocal(asset.endAt),
+        title: asset.title || '',
+        image: null,
+        mobileImage: null,
+    };
+    clearAssetFiles();
+}
+
+function cancelAssetEdit() {
+    editingAsset.value = null;
+    assetForm.value = defaultAssetForm(assetPromotion.value);
+    clearAssetFiles();
+}
+
 async function updatePromotionSchedule() {
-    if (!selectedPromotion.value) {
+    if (!selectedPromotion.value || !canEditPromotion.value) {
         return;
     }
 
@@ -222,6 +433,36 @@ function onProductsSelected(event) {
     createForm.value.products = event.target.files?.[0] || null;
 }
 
+function clearAssetFiles() {
+    assetForm.value.image = null;
+    assetForm.value.mobileImage = null;
+
+    if (assetImageInput.value) {
+        assetImageInput.value.value = '';
+    }
+
+    if (assetMobileImageInput.value) {
+        assetMobileImageInput.value.value = '';
+    }
+}
+
+function clearHeaderFile() {
+    headerForm.value.header = null;
+
+    if (headerImageInput.value) {
+        headerImageInput.value.value = '';
+    }
+}
+
+function firstError(errors) {
+    if (!errors) {
+        return '';
+    }
+
+    const first = Object.values(errors)[0];
+    return Array.isArray(first) ? first[0] : first;
+}
+
 function defaultCreateForm() {
     const start = new Date();
     start.setDate(start.getDate() + 1);
@@ -246,6 +487,27 @@ function defaultCreateForm() {
         endAt: toDatetimeLocal(end),
         products: null,
     };
+}
+
+function defaultAssetForm(promotion = null) {
+    return {
+        type: 'BANNER',
+        platform: 'WEB',
+        position: '',
+        order: 1,
+        status: 'PENDIENTE',
+        startAt: sqlToDatetimeLocal(promotion?.startAt) || toDatetimeLocal(new Date()),
+        endAt: sqlToDatetimeLocal(promotion?.endAt) || toDatetimeLocal(addDays(new Date(), 7)),
+        title: promotion?.commercialName || promotion?.name || '',
+        image: null,
+        mobileImage: null,
+    };
+}
+
+function addDays(date, days) {
+    const value = new Date(date);
+    value.setDate(value.getDate() + days);
+    return value;
 }
 
 function toDatetimeLocal(date) {
@@ -274,9 +536,29 @@ function editFieldError(field) {
     return editErrors.value?.[field]?.[0] || '';
 }
 
+function assetPreview(asset) {
+    return asset.image || asset.mobileImage || '';
+}
+
+function promotionHeaderImage(promotion) {
+    const header = String(promotion?.header || '').trim();
+
+    if (!header || header === 'RUTA') {
+        return '';
+    }
+
+    if (header.startsWith('http') || header.startsWith('/')) {
+        return header;
+    }
+
+    return `/images/${header}`;
+}
+
 const canEditStart = computed(() => selectedPromotion.value?.status === 'PENDIENTE');
 const canEditEnd = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(selectedPromotion.value?.status));
 const canEditSchedule = computed(() => canEditStart.value || canEditEnd.value);
+const canEditPromotion = computed(() => selectedPromotion.value?.status !== 'FINALIZADA');
+const canManagePromotionAssets = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(assetPromotion.value?.status));
 
 function statusHtml(status) {
     const normalized = String(status || 'N/D');
@@ -599,7 +881,15 @@ onMounted(fetchPromotions);
                         </div>
 
                         <div
-                            v-if="!canEditSchedule"
+                            v-if="!canEditPromotion"
+                            class="mb-5 rounded-md border px-4 py-3 text-sm"
+                            style="border-color: var(--stj-border); color: var(--stj-muted);"
+                        >
+                            Esta promocion solo esta disponible para consulta porque esta finalizada.
+                        </div>
+
+                        <div
+                            v-else-if="!canEditSchedule"
                             class="mb-5 rounded-md border px-4 py-3 text-sm"
                             style="border-color: var(--stj-border); color: var(--stj-muted);"
                         >
@@ -616,7 +906,14 @@ onMounted(fetchPromotions);
 
                                 <label class="block">
                                     <span class="app-muted text-sm font-medium">Titulo comercial</span>
-                                    <input v-model="editForm.commercialName" maxlength="255" class="stj-input mt-2" type="text">
+                                    <input
+                                        v-model="editForm.commercialName"
+                                        maxlength="255"
+                                        class="stj-input mt-2"
+                                        :class="{ 'stj-input-readonly': !canEditPromotion }"
+                                        type="text"
+                                        :disabled="!canEditPromotion"
+                                    >
                                     <span v-if="editFieldError('commercialName')" class="stj-field-error">{{ editFieldError('commercialName') }}</span>
                                 </label>
 
@@ -699,6 +996,7 @@ onMounted(fetchPromotions);
                             Cerrar
                         </button>
                         <button
+                            v-if="canEditPromotion"
                             type="submit"
                             class="rounded-md px-4 py-2 text-sm font-semibold text-white"
                             style="background: var(--stj-primary);"
@@ -708,6 +1006,358 @@ onMounted(fetchPromotions);
                         </button>
                     </div>
                 </form>
+            </div>
+        </Teleport>
+
+        <Teleport to="body">
+            <div
+                v-if="assetPromotion"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6"
+                role="dialog"
+                aria-modal="true"
+                @click.self="closePromotionAssets"
+            >
+                <div class="app-surface max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-lg border shadow-2xl">
+                    <div class="flex items-start justify-between gap-4 border-b px-6 py-5" style="border-color: var(--stj-border);">
+                        <div>
+                            <p class="app-primary-text text-xs font-semibold uppercase tracking-[0.18em]">
+                                Assets de promocion
+                            </p>
+                            <h2 class="app-text mt-2 text-2xl font-semibold">
+                                {{ assetPromotion.name }}
+                            </h2>
+                            <p class="app-muted mt-1 text-sm">
+                                {{ promotionAssetLink || assetPromotion.link || 'Link automatico de promocion' }}
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="stj-modal-close"
+                            aria-label="Cerrar"
+                            title="Cerrar"
+                            @click="closePromotionAssets"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m6.7 5.6 5.3 5.3 5.3-5.3 1.1 1.1-5.3 5.3 5.3 5.3-1.1 1.1-5.3-5.3-5.3 5.3-1.1-1.1 5.3-5.3-5.3-5.3 1.1-1.1Z" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="max-h-[calc(92vh-90px)] overflow-y-auto p-6">
+                        <div v-if="assetError" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                            {{ assetError }}
+                        </div>
+
+                        <div v-if="assetSuccess" class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                            {{ assetSuccess }}
+                        </div>
+
+                        <div
+                            v-if="!canManagePromotionAssets"
+                            class="mb-4 rounded-md border px-4 py-3 text-sm"
+                            style="border-color: var(--stj-border); color: var(--stj-muted);"
+                        >
+                            Esta promocion solo esta disponible para consulta porque esta finalizada.
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.78fr)]">
+                            <div>
+                                <section class="rounded-lg border p-4" style="border-color: var(--stj-border);">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div>
+                                            <h3 class="app-text text-lg font-semibold">Banner de promocion</h3>
+                                            <p class="app-muted mt-1 text-sm">
+                                                Imagen guardada en prm_encabezado.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4 grid gap-4">
+                                        <div class="overflow-hidden rounded-md border" style="border-color: var(--stj-border);">
+                                            <img
+                                                v-if="promotionHeaderImage(assetPromotion)"
+                                                :src="promotionHeaderImage(assetPromotion)"
+                                                :alt="assetPromotion.name"
+                                                class="h-36 w-full object-cover"
+                                            >
+                                            <div v-else class="app-muted flex h-28 items-center justify-center text-sm">
+                                                Sin banner de promocion
+                                            </div>
+                                        </div>
+
+                                        <form class="grid gap-3" @submit.prevent="submitPromotionHeader">
+                                            <label class="block">
+                                                <span class="app-muted text-sm font-medium">Imagen banner</span>
+                                                <input
+                                                    ref="headerImageInput"
+                                                    required
+                                                    accept="image/*"
+                                                    type="file"
+                                                    class="app-surface app-text mt-2 block h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700"
+                                                    style="border-color: var(--stj-border);"
+                                                    :disabled="!canManagePromotionAssets"
+                                                    @change="headerForm.header = $event.target.files[0] || null"
+                                                >
+                                            </label>
+
+                                            <button
+                                                type="submit"
+                                                class="inline-flex h-11 items-center justify-center rounded-md bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                :disabled="headerSaving || !headerForm.header || !canManagePromotionAssets"
+                                            >
+                                                {{ headerSaving ? 'Guardando...' : 'Guardar banner' }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </section>
+
+                                <div class="mt-6 flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 class="app-text text-lg font-semibold">Assets ligados</h3>
+                                        <p class="app-muted mt-1 text-sm">
+                                            Imagenes que apuntan a esta promocion.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div v-if="assetsLoading" class="app-muted mt-4 rounded-lg border px-4 py-8 text-center text-sm" style="border-color: var(--stj-border);">
+                                    Cargando assets...
+                                </div>
+
+                                <div v-else-if="promotionAssets.length === 0" class="app-muted mt-4 rounded-lg border px-4 py-8 text-center text-sm" style="border-color: var(--stj-border);">
+                                    Todavia no hay assets para esta promocion.
+                                </div>
+
+                                <div v-else class="mt-4 grid gap-3">
+                                    <article
+                                        v-for="asset in promotionAssets"
+                                        :key="asset.id"
+                                        class="stj-asset-item"
+                                    >
+                                        <div class="h-20 w-28 overflow-hidden rounded-md border" style="border-color: var(--stj-border);">
+                                            <img
+                                                v-if="assetPreview(asset)"
+                                                :src="assetPreview(asset)"
+                                                :alt="asset.title || asset.type"
+                                                class="h-full w-full object-cover"
+                                            >
+                                            <div v-else class="app-muted flex h-full items-center justify-center text-xs">
+                                                Sin imagen
+                                            </div>
+                                        </div>
+
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span class="stj-asset-badge">{{ asset.type }}</span>
+                                                <span class="stj-asset-badge">{{ asset.platform }}</span>
+                                                <span class="stj-asset-badge">{{ asset.status }}</span>
+                                                <span v-if="asset.position" class="stj-asset-badge">{{ asset.position }}</span>
+                                            </div>
+                                            <p class="app-text mt-2 truncate text-sm font-semibold">
+                                                {{ asset.title || asset.link }}
+                                            </p>
+                                            <p class="app-muted mt-1 text-xs">
+                                                Orden {{ asset.order || 0 }} · {{ formatDate(asset.startAt) }} - {{ formatDate(asset.endAt) }}
+                                            </p>
+                                        </div>
+
+                                        <div v-if="canManagePromotionAssets" class="flex shrink-0 flex-col gap-2 sm:flex-row">
+                                            <button
+                                                type="button"
+                                                class="rounded-md border px-3 py-2 text-xs font-semibold"
+                                                style="border-color: var(--stj-border); color: var(--stj-primary);"
+                                                @click="editPromotionAsset(asset)"
+                                            >
+                                                Editar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="rounded-md border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-60"
+                                                :disabled="deletingAssetId === asset.id"
+                                                @click="deletePromotionAsset(asset)"
+                                            >
+                                                {{ deletingAssetId === asset.id ? 'Eliminando...' : 'Eliminar' }}
+                                            </button>
+                                        </div>
+                                    </article>
+                                </div>
+                            </div>
+
+                            <form v-if="canManagePromotionAssets" class="rounded-lg border p-4" style="border-color: var(--stj-border);" @submit.prevent="submitPromotionAsset">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <h3 class="app-text text-lg font-semibold">
+                                            {{ editingAsset ? 'Editar asset' : 'Agregar asset' }}
+                                        </h3>
+                                        <p v-if="editingAsset" class="app-muted mt-1 text-sm">
+                                            Las imagenes son opcionales al editar.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        v-if="editingAsset"
+                                        type="button"
+                                        class="app-muted rounded-md border px-3 py-2 text-xs font-semibold"
+                                        style="border-color: var(--stj-border);"
+                                        @click="cancelAssetEdit"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+
+                                <div class="mt-4 grid gap-4">
+                                    <label class="block">
+                                        <span class="app-muted text-sm font-medium">Tipo</span>
+                                        <select
+                                            v-model="assetForm.type"
+                                            required
+                                            class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                            style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
+                                        >
+                                            <option value="BANNER">BANNER</option>
+                                            <option value="SLIDER">SLIDER</option>
+                                            <option value="MODAL">MODAL</option>
+                                            <option value="CUPON">CUPON</option>
+                                            <option value="LO-MAS-NUEVO">LO-MAS-NUEVO</option>
+                                        </select>
+                                    </label>
+
+                                    <div class="grid gap-3 sm:grid-cols-2">
+                                        <label class="block">
+                                            <span class="app-muted text-sm font-medium">Plataforma</span>
+                                            <select
+                                                v-model="assetForm.platform"
+                                                class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                                style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
+                                            >
+                                                <option value="WEB">WEB</option>
+                                                <option value="APP">APP</option>
+                                                <option value="TODO">TODO</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="block">
+                                            <span class="app-muted text-sm font-medium">Estado</span>
+                                            <select
+                                                v-model="assetForm.status"
+                                                class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                                style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
+                                            >
+                                                <option value="PENDIENTE">PENDIENTE</option>
+                                                <option value="ACTIVO">ACTIVO</option>
+                                                <option value="FINALIZADO">FINALIZADO</option>
+                                                <option value="CANCELADO">CANCELADO</option>
+                                            </select>
+                                        </label>
+                                    </div>
+
+                                    <div class="grid gap-3 sm:grid-cols-2">
+                                        <label class="block">
+                                            <span class="app-muted text-sm font-medium">Orden</span>
+                                            <input
+                                                v-model="assetForm.order"
+                                                min="0"
+                                                type="number"
+                                                class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                                style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
+                                            >
+                                        </label>
+
+                                        <label class="block">
+                                            <span class="app-muted text-sm font-medium">Posicion</span>
+                                            <select
+                                                v-model="assetForm.position"
+                                                :disabled="assetForm.type !== 'LO-MAS-NUEVO'"
+                                                class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4 disabled:opacity-60"
+                                                style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
+                                            >
+                                                <option value="">No aplica</option>
+                                                <option value="IZQUIERDA">IZQUIERDA</option>
+                                                <option value="DERECHA">DERECHA</option>
+                                                <option value="CENTRO">CENTRO</option>
+                                            </select>
+                                        </label>
+                                    </div>
+
+                                    <label class="block">
+                                        <span class="app-muted text-sm font-medium">Titulo</span>
+                                        <input
+                                            v-model="assetForm.title"
+                                            maxlength="45"
+                                            type="text"
+                                            class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                            style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
+                                        >
+                                    </label>
+
+                                    <div class="grid gap-3 sm:grid-cols-2">
+                                        <label class="block">
+                                            <span class="app-muted text-sm font-medium">Inicio</span>
+                                            <input
+                                                v-model="assetForm.startAt"
+                                                required
+                                                type="datetime-local"
+                                                class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                                style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
+                                            >
+                                        </label>
+
+                                        <label class="block">
+                                            <span class="app-muted text-sm font-medium">Fin</span>
+                                            <input
+                                                v-model="assetForm.endAt"
+                                                required
+                                                type="datetime-local"
+                                                class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                                style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
+                                            >
+                                        </label>
+                                    </div>
+
+                                    <label class="block">
+                                        <span class="app-muted text-sm font-medium">Imagen desktop</span>
+                                        <input
+                                            ref="assetImageInput"
+                                            :required="!editingAsset"
+                                            accept="image/*"
+                                            type="file"
+                                            class="app-surface app-text mt-2 block h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700"
+                                            style="border-color: var(--stj-border);"
+                                            @change="assetForm.image = $event.target.files[0] || null"
+                                        >
+                                    </label>
+
+                                    <label class="block">
+                                        <span class="app-muted text-sm font-medium">Imagen movil</span>
+                                        <input
+                                            ref="assetMobileImageInput"
+                                            accept="image/*"
+                                            type="file"
+                                            class="app-surface app-text mt-2 block h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700"
+                                            style="border-color: var(--stj-border);"
+                                            @change="assetForm.mobileImage = $event.target.files[0] || null"
+                                        >
+                                    </label>
+
+                                    <button
+                                        type="submit"
+                                        class="inline-flex h-11 items-center justify-center rounded-md bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        :disabled="assetSaving"
+                                    >
+                                        {{ assetSaving ? 'Guardando...' : (editingAsset ? 'Actualizar asset' : 'Guardar asset') }}
+                                    </button>
+                                </div>
+                            </form>
+                            <div v-else class="rounded-lg border p-4" style="border-color: var(--stj-border);">
+                                <h3 class="app-text text-lg font-semibold">Agregar asset</h3>
+                                <p class="app-muted mt-2 text-sm">
+                                    No se pueden agregar assets a una promocion finalizada.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </Teleport>
     </AdminLayout>
@@ -757,6 +1407,27 @@ onMounted(fetchPromotions);
     max-width: 980px;
     overflow: hidden;
     width: min(980px, 100%);
+}
+
+.stj-modal-close {
+    align-items: center;
+    border: 1px solid var(--stj-border);
+    border-radius: 0.375rem;
+    color: var(--stj-muted);
+    display: inline-flex;
+    height: 2.25rem;
+    justify-content: center;
+    width: 2.25rem;
+}
+
+.stj-modal-close:hover {
+    color: var(--stj-text);
+}
+
+.stj-modal-close svg {
+    fill: currentColor;
+    height: 1.1rem;
+    width: 1.1rem;
 }
 
 .stj-input {
@@ -812,5 +1483,25 @@ onMounted(fetchPromotions);
     height: 1rem;
     pointer-events: none;
     width: 1rem;
+}
+
+.stj-asset-item {
+    align-items: center;
+    border: 1px solid var(--stj-border);
+    border-radius: 0.5rem;
+    display: flex;
+    gap: 0.875rem;
+    padding: 0.875rem;
+}
+
+.stj-asset-badge {
+    background: var(--stj-primary-soft);
+    border-radius: 999px;
+    color: var(--stj-primary);
+    display: inline-flex;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    padding: 0.2rem 0.55rem;
 }
 </style>

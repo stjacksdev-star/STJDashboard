@@ -52,6 +52,148 @@ class DashboardApiClient
     }
 
     /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function salesKpi(?string $country = null, ?string $startDate = null, ?string $endDate = null): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/sales/kpi', array_filter([
+                'country' => $country,
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function salesOrders(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/sales/orders', array_filter([
+                'country' => $filters['country'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+                'origin' => $filters['origin'] ?? null,
+                'checkout' => $filters['checkout'] ?? null,
+                'pending' => $filters['pending'] ?? null,
+                'store' => $filters['store'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function orderByReference(string $country, string $reference): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/orders/reference', [
+                'country' => $country,
+                'reference' => $reference,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function validateOrderProduct(string $country, string $sku, ?string $size = null): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/orders/product', [
+                'country' => $country,
+                'sku' => $sku,
+                'size' => $size,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function updateOrderLine(int $line, array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post("/dashboard/orders/lines/{$line}", [
+                'sku' => $data['sku'],
+                'size' => $data['size'],
+                'quantity' => $data['quantity'],
+                'discount' => $data['discount'] ?? 0,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function processOrder(string $country, string $reference, string $ticket, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/orders/process', [
+                'country' => $country,
+                'reference' => $reference,
+                'ticket' => $ticket,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      *
@@ -82,6 +224,128 @@ class DashboardApiClient
             'startAt' => $data['startAt'],
             'endAt' => $data['endAt'],
         ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function promotionAssets(int $promotion): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get("/dashboard/promotions/{$promotion}/assets");
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function createPromotionAsset(int $promotion, array $data, UploadedFile $image, ?UploadedFile $mobileImage = null): array
+    {
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->attach('image', fopen($image->getRealPath(), 'rb'), $image->getClientOriginalName());
+
+        if ($mobileImage) {
+            $request = $request->attach('mobileImage', fopen($mobileImage->getRealPath(), 'rb'), $mobileImage->getClientOriginalName());
+        }
+
+        $response = $request->post("/dashboard/promotions/{$promotion}/assets", [
+            'type' => $data['type'],
+            'platform' => $data['platform'] ?? 'WEB',
+            'position' => $data['position'] ?? null,
+            'order' => $data['order'] ?? 1,
+            'status' => $data['status'] ?? 'PENDIENTE',
+            'startAt' => $data['startAt'],
+            'endAt' => $data['endAt'],
+            'title' => $data['title'] ?? null,
+        ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function updatePromotionAsset(int $asset, array $data, ?UploadedFile $image = null, ?UploadedFile $mobileImage = null): array
+    {
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson();
+
+        if ($image) {
+            $request = $request->attach('image', fopen($image->getRealPath(), 'rb'), $image->getClientOriginalName());
+        }
+
+        if ($mobileImage) {
+            $request = $request->attach('mobileImage', fopen($mobileImage->getRealPath(), 'rb'), $mobileImage->getClientOriginalName());
+        }
+
+        $response = $request->post("/dashboard/promotions/assets/{$asset}", [
+            'type' => $data['type'],
+            'platform' => $data['platform'] ?? 'WEB',
+            'position' => $data['position'] ?? null,
+            'order' => $data['order'] ?? 1,
+            'status' => $data['status'] ?? 'PENDIENTE',
+            'startAt' => $data['startAt'],
+            'endAt' => $data['endAt'],
+            'title' => $data['title'] ?? null,
+        ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public function deletePromotionAsset(int $asset): void
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->delete("/dashboard/promotions/assets/{$asset}");
+
+        $response->throw();
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function updatePromotionHeader(int $promotion, UploadedFile $header): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->attach('header', fopen($header->getRealPath(), 'rb'), $header->getClientOriginalName())
+            ->post("/dashboard/promotions/{$promotion}/header");
 
         $response->throw();
 
