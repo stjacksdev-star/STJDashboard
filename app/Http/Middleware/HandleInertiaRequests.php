@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\StoreProfileService;
 use App\Support\DashboardAccess;
 use App\Support\DashboardMenu;
 use Illuminate\Http\Request;
@@ -19,6 +20,11 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->session()->get('stj.user');
+
+        if (is_array($user) && blank($user['storeLabel'] ?? null)) {
+            $user = app(StoreProfileService::class)->enrich($user);
+            $request->session()->put('stj.user', $user);
+        }
 
         return [
             ...parent::share($request),

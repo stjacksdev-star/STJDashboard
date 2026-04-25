@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\CasAuthService;
+use App\Services\StoreProfileService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -69,13 +70,15 @@ class LoginController extends Controller
         $validation = $cas->validateToken($token);
 
         if ($validation['ok'] === true) {
+            $user = app(StoreProfileService::class)->enrich($validation['user']);
+
             $request->session()->regenerate();
-            $request->session()->put('stj.user', $validation['user']);
+            $request->session()->put('stj.user', $user);
             $request->session()->put('stj.expires_at', $validation['expires_at']);
 
             Log::info('CAS session started', [
-                'idUser' => $validation['user']['idUser'] ?? null,
-                'correo' => $validation['user']['correo'] ?? null,
+                'idUser' => $user['idUser'] ?? null,
+                'correo' => $user['correo'] ?? null,
                 'expires_at' => $validation['expires_at'] ?? null,
             ]);
 

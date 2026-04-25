@@ -64,6 +64,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('promotions.index');
     Route::get('/venta', fn () => Inertia::render('Sales/Index'))
         ->name('sales.index');
+    Route::get('/pedidos/pendientes', fn () => Inertia::render('Orders/Pending'))
+        ->name('orders.pending');
     Route::get('/pedidos/consulta', fn (Request $request) => Inertia::render('Orders/Reference', [
         'initialCountry' => $request->string('country')->toString(),
         'initialReference' => $request->string('id')->toString(),
@@ -74,7 +76,6 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         '/cupones/mantenimiento' => 'Cupones / Mantenimiento',
         '/cupones/reportes' => 'Cupones / Reportes',
         '/pedidos/gestiones' => 'Pedidos / Gestiones',
-        '/pedidos/pendientes' => 'Pedidos / Pendientes',
         '/pedidos/devoluciones' => 'Pedidos / Devoluciones',
         '/pedidos/busqueda' => 'Pedidos / Busqueda',
         '/reportes/catalogo' => 'Reportes / Catalogo',

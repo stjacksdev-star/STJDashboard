@@ -9,6 +9,7 @@ const openGroups = ref(new Set());
 const { isDark, toggleTheme } = useTheme();
 
 const user = computed(() => page.props.auth?.user || {});
+const storeLabel = computed(() => user.value.storeLabel || user.value.tiendas || '00000');
 const navigation = computed(() => page.props.navigation || []);
 
 const iconPaths = {
@@ -191,7 +192,7 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                 <div class="flex items-center gap-4">
                     <div class="hidden text-right sm:block">
                         <p class="text-sm font-semibold">{{ user.nombre || 'Usuario STJ' }}</p>
-                        <p class="app-header-muted text-xs">{{ user.pais || 'N/D' }} · {{ user.tiendas || '00000' }}</p>
+                        <p class="app-header-muted text-xs">{{ user.pais || 'N/D' }} · {{ storeLabel }}</p>
                     </div>
                     <button
                         type="button"

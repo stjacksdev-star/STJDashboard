@@ -31,7 +31,7 @@ const permissions = page.props.auth?.permissions || [];
                 </div>
                 <div class="app-surface rounded-lg border p-5">
                     <p class="app-muted text-sm">Tiendas</p>
-                    <p class="app-text mt-2 text-2xl font-semibold">{{ user?.tiendas || '00000' }}</p>
+                    <p class="app-text mt-2 text-2xl font-semibold">{{ user?.storeLabel || user?.tiendas || '00000' }}</p>
                 </div>
                 <div class="app-surface rounded-lg border p-5">
                     <p class="app-muted text-sm">Permisos</p>
