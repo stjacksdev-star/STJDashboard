@@ -120,6 +120,72 @@ class OrderController extends Controller
         }
     }
 
+    public function deliver(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para entregar pedidos.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'reference' => ['required', 'string', 'max:60'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->deliverOrder(
+                    $validated['country'],
+                    $validated['reference'],
+                    $this->actor($request),
+                ),
+                'message' => 'Pedido entregado correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible entregar el pedido en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function markInRoute(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para marcar pedidos en ruta.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'reference' => ['required', 'string', 'max:60'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->markOrderInRoute(
+                    $validated['country'],
+                    $validated['reference'],
+                    $this->actor($request),
+                ),
+                'message' => 'Pedido marcado en ruta correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible marcar el pedido en ruta en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -132,6 +198,9 @@ class OrderController extends Controller
             'name' => $user['nombre'] ?? $user['name'] ?? null,
             'email' => $user['correo'] ?? $user['email'] ?? null,
             'username' => $user['usuario'] ?? $user['username'] ?? null,
+            'countryId' => $user['idPais'] ?? null,
+            'storeId' => $user['storeId'] ?? $user['tiendas'] ?? null,
+            'storeCode' => $user['storeCode'] ?? $user['tiendas'] ?? null,
             'permissions' => $user['operaciones'] ?? [],
             'ip' => $request->ip(),
             'userAgent' => substr((string) $request->userAgent(), 0, 500),

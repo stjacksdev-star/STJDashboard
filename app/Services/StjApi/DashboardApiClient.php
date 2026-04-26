@@ -92,6 +92,7 @@ class DashboardApiClient
                 'origin' => $filters['origin'] ?? null,
                 'checkout' => $filters['checkout'] ?? null,
                 'pending' => $filters['pending'] ?? null,
+                'statuses' => $filters['statuses'] ?? null,
                 'store' => $filters['store'] ?? null,
             ], fn ($value) => filled($value)));
 
@@ -185,6 +186,52 @@ class DashboardApiClient
                 'country' => $country,
                 'reference' => $reference,
                 'ticket' => $ticket,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function deliverOrder(string $country, string $reference, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/orders/deliver', [
+                'country' => $country,
+                'reference' => $reference,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function markOrderInRoute(string $country, string $reference, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/orders/route', [
+                'country' => $country,
+                'reference' => $reference,
                 'actor' => $actor,
             ]);
 

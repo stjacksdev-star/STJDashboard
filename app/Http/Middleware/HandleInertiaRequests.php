@@ -21,7 +21,7 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->session()->get('stj.user');
 
-        if (is_array($user) && blank($user['storeLabel'] ?? null)) {
+        if (is_array($user) && (blank($user['storeLabel'] ?? null) || blank($user['storeCode'] ?? null))) {
             $user = app(StoreProfileService::class)->enrich($user);
             $request->session()->put('stj.user', $user);
         }

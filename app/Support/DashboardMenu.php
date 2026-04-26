@@ -32,6 +32,7 @@ class DashboardMenu
                 'items' => [
                     self::item('Gestiones', '/pedidos/gestiones', 'truck', 'MENU_GESTION_PEDIDO'),
                     self::item('Pendientes', '/pedidos/pendientes', 'list', 'MENU_PEDIDOS'),
+                    self::item('Procesados', '/pedidos/procesados', 'clipboard', 'MENU_PEDIDOS'),
                     self::item('Devoluciones', '/pedidos/devoluciones', 'refresh', 'MENU_DEVOLUCIONES'),
                     self::group('Busqueda', 'search', [
                         self::item('General', '/pedidos/busqueda'),

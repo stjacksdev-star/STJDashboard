@@ -36,6 +36,13 @@ const processError = ref('');
 const processForm = ref({
     ticket: '',
 });
+const showDeliverModal = ref(false);
+const deliverSaving = ref(false);
+const deliverError = ref('');
+const showRouteModal = ref(false);
+const routeSaving = ref(false);
+const routeError = ref('');
+const routePromptAfterProcess = ref(false);
 const form = ref({
     country: props.initialCountry || '',
     reference: props.initialReference || '',
@@ -51,8 +58,32 @@ const canProcessOrders = computed(() =>
     || permissions.value.includes('MENU_PROCESAR_PEDIDO')
     || permissions.value.includes('OP_MENU_PROCESAR_PEDIDO'),
 );
+const canDeliverOrders = computed(() =>
+    permissions.value.includes('ROOT')
+    || permissions.value.includes('MENU_PEDIDOS')
+    || permissions.value.includes('OP_MENU_PEDIDOS'),
+);
+const storeCode = computed(() => String(page.props.auth?.user?.storeCode || page.props.auth?.user?.tiendas || '00000'));
+const normalizedSessionStoreCode = computed(() => normalizeStoreCode(storeCode.value));
+const hasAssignedStore = computed(() => normalizedSessionStoreCode.value !== '' && normalizedSessionStoreCode.value !== '0');
+const orderStoreCode = computed(() => String(order.value?.storePickup?.storeCode || ''));
+const normalizedOrderStoreCode = computed(() => normalizeStoreCode(orderStoreCode.value));
+const isSameSessionStore = computed(() => !hasAssignedStore.value || normalizedOrderStoreCode.value === normalizedSessionStoreCode.value);
 const canEditProducts = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value);
 const canProcessCurrentOrder = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value && !editingLineId.value);
+const canMarkRouteCurrentOrder = computed(() =>
+    order.value?.checkout === 'DOMICILIO'
+    && order.value?.status === 'PREPARADO'
+    && canDeliverOrders.value,
+);
+const canDeliverCurrentOrder = computed(() =>
+    (
+        (order.value?.checkout === 'TIENDA' && order.value?.status === 'PREPARADO')
+        || (order.value?.checkout === 'DOMICILIO' && order.value?.status === 'EN-RUTA')
+    )
+    && canDeliverOrders.value
+    && isSameSessionStore.value,
+);
 const hasProductsDifference = computed(() => Math.abs(roundMoney(order.value?.totals?.productsDifference || 0)) >= 0.01);
 const hasPaidDifference = computed(() => Math.abs(roundMoney(order.value?.totals?.paidDifference || 0)) >= 0.01);
 const processDifference = computed(() => roundMoney(order.value?.totals?.paidDifference || 0));
@@ -280,10 +311,94 @@ async function processOrder() {
         orderData.value = response.data.data;
         showProcessModal.value = false;
         cancelLineEdit();
+
+        if (order.value?.checkout === 'DOMICILIO' && order.value?.status === 'PREPARADO') {
+            routePromptAfterProcess.value = true;
+            showRouteModal.value = true;
+        }
     } catch (exception) {
         processError.value = exception.response?.data?.message || 'No fue posible procesar el pedido.';
     } finally {
         processSaving.value = false;
+    }
+}
+
+function openDeliverModal() {
+    deliverError.value = '';
+    showDeliverModal.value = true;
+}
+
+function closeDeliverModal() {
+    if (deliverSaving.value) {
+        return;
+    }
+
+    showDeliverModal.value = false;
+    deliverError.value = '';
+}
+
+async function deliverOrder() {
+    if (!order.value) {
+        return;
+    }
+
+    deliverSaving.value = true;
+    deliverError.value = '';
+
+    try {
+        const response = await window.axios.post('/dashboard-api/orders/deliver', {
+            country: form.value.country,
+            reference: order.value.reference,
+        });
+
+        orderData.value = response.data.data;
+        showDeliverModal.value = false;
+        cancelLineEdit();
+    } catch (exception) {
+        deliverError.value = exception.response?.data?.message || 'No fue posible entregar el pedido.';
+    } finally {
+        deliverSaving.value = false;
+    }
+}
+
+function openRouteModal() {
+    routeError.value = '';
+    routePromptAfterProcess.value = false;
+    showRouteModal.value = true;
+}
+
+function closeRouteModal() {
+    if (routeSaving.value) {
+        return;
+    }
+
+    showRouteModal.value = false;
+    routeError.value = '';
+    routePromptAfterProcess.value = false;
+}
+
+async function markOrderInRoute() {
+    if (!order.value) {
+        return;
+    }
+
+    routeSaving.value = true;
+    routeError.value = '';
+
+    try {
+        const response = await window.axios.post('/dashboard-api/orders/route', {
+            country: form.value.country,
+            reference: order.value.reference,
+        });
+
+        orderData.value = response.data.data;
+        showRouteModal.value = false;
+        routePromptAfterProcess.value = false;
+        cancelLineEdit();
+    } catch (exception) {
+        routeError.value = exception.response?.data?.message || 'No fue posible marcar el pedido en ruta.';
+    } finally {
+        routeSaving.value = false;
     }
 }
 
@@ -330,6 +445,18 @@ function productSubtotal(product, key) {
 function signedMoney(value) {
     const amount = Number(value || 0);
     return `${amount > 0 ? '+' : ''}${currency.value} ${formatMoney(amount)}`;
+}
+
+function normalizeStoreCode(value) {
+    const code = String(value || '').trim();
+
+    if (code === '') {
+        return '';
+    }
+
+    const withoutLeadingZeros = code.replace(/^0+/, '');
+
+    return withoutLeadingZeros === '' ? '0' : withoutLeadingZeros;
 }
 
 function productChanged(product) {
@@ -796,8 +923,25 @@ onMounted(() => {
                             </tfoot>
                         </table>
                     </div>
-                    <div v-if="canProcessCurrentOrder" class="mt-5 flex justify-end">
+                    <div v-if="canProcessCurrentOrder || canMarkRouteCurrentOrder || canDeliverCurrentOrder" class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
                         <button
+                            v-if="canMarkRouteCurrentOrder"
+                            type="button"
+                            class="app-primary inline-flex h-10 items-center justify-center rounded-md px-5 text-sm font-semibold shadow-sm"
+                            @click="openRouteModal"
+                        >
+                            Marcar en ruta
+                        </button>
+                        <button
+                            v-if="canDeliverCurrentOrder"
+                            type="button"
+                            class="app-primary inline-flex h-10 items-center justify-center rounded-md px-5 text-sm font-semibold shadow-sm"
+                            @click="openDeliverModal"
+                        >
+                            Entregar
+                        </button>
+                        <button
+                            v-if="canProcessCurrentOrder"
                             type="button"
                             class="app-primary inline-flex h-10 items-center justify-center rounded-md px-5 text-sm font-semibold shadow-sm"
                             @click="openProcessModal"
@@ -893,6 +1037,144 @@ onMounted(() => {
                                 :disabled="processSaving"
                             >
                                 {{ processSaving ? 'Procesando...' : 'Confirmar proceso' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div
+                v-if="showDeliverModal && order"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="app-surface w-full max-w-lg overflow-hidden rounded-lg border shadow-xl">
+                    <div class="app-border-soft flex items-start justify-between gap-4 border-b px-6 py-5">
+                        <div>
+                            <p class="app-primary-text text-xs font-semibold uppercase">Entregar pedido</p>
+                            <h2 class="app-text mt-1 text-xl font-semibold">{{ order.reference }}</h2>
+                        </div>
+                        <button
+                            type="button"
+                            class="app-surface-soft app-text flex h-9 w-9 items-center justify-center rounded-md border text-xl"
+                            :disabled="deliverSaving"
+                            @click="closeDeliverModal"
+                        >
+                            x
+                        </button>
+                    </div>
+
+                    <form class="px-6 py-5" @submit.prevent="deliverOrder">
+                        <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                            <p class="text-base">Confirmar entrega</p>
+                            <p class="mt-1">
+                                El pedido pasara de {{ order.status }} a ENTREGADO y se registrara la fecha de entrega.
+                            </p>
+                        </div>
+
+                        <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                            <div class="app-surface-soft rounded-md border p-4">
+                                <p class="app-muted text-xs font-semibold uppercase">{{ order.checkout === 'DOMICILIO' ? 'Entrega' : 'Tienda' }}</p>
+                                <p class="app-text mt-1 font-semibold">
+                                    {{ order.checkout === 'DOMICILIO'
+                                        ? 'Domicilio'
+                                        : display(order.storePickup.storeName || order.storePickup.storeCode) }}
+                                </p>
+                            </div>
+                            <div class="app-surface-soft rounded-md border p-4">
+                                <p class="app-muted text-xs font-semibold uppercase">Cliente</p>
+                                <p class="app-text mt-1 font-semibold">{{ display(order.customer.name) }}</p>
+                            </div>
+                        </div>
+
+                        <div v-if="deliverError" class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                            {{ deliverError }}
+                        </div>
+
+                        <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <button
+                                type="button"
+                                class="app-surface-soft app-text inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-semibold"
+                                :disabled="deliverSaving"
+                                @click="closeDeliverModal"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                class="app-primary inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold shadow-sm disabled:opacity-60"
+                                :disabled="deliverSaving"
+                            >
+                                {{ deliverSaving ? 'Entregando...' : 'Confirmar entrega' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div
+                v-if="showRouteModal && order"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="app-surface w-full max-w-lg overflow-hidden rounded-lg border shadow-xl">
+                    <div class="app-border-soft flex items-start justify-between gap-4 border-b px-6 py-5">
+                        <div>
+                            <p class="app-primary-text text-xs font-semibold uppercase">Pedido en ruta</p>
+                            <h2 class="app-text mt-1 text-xl font-semibold">{{ order.reference }}</h2>
+                        </div>
+                        <button
+                            type="button"
+                            class="app-surface-soft app-text flex h-9 w-9 items-center justify-center rounded-md border text-xl"
+                            :disabled="routeSaving"
+                            @click="closeRouteModal"
+                        >
+                            x
+                        </button>
+                    </div>
+
+                    <form class="px-6 py-5" @submit.prevent="markOrderInRoute">
+                        <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                            <p class="text-base">{{ routePromptAfterProcess ? 'Pedido procesado' : 'Confirmar envio' }}</p>
+                            <p class="mt-1">
+                                {{ routePromptAfterProcess
+                                    ? 'El pedido quedo PREPARADO. Puede marcarlo en ruta ahora o dejarlo preparado para hacerlo despues.'
+                                    : 'El pedido pasara de PREPARADO a EN-RUTA y se registrara la fecha de ruta.' }}
+                            </p>
+                        </div>
+
+                        <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                            <div class="app-surface-soft rounded-md border p-4">
+                                <p class="app-muted text-xs font-semibold uppercase">Entrega</p>
+                                <p class="app-text mt-1 font-semibold">Domicilio</p>
+                            </div>
+                            <div class="app-surface-soft rounded-md border p-4">
+                                <p class="app-muted text-xs font-semibold uppercase">Cliente</p>
+                                <p class="app-text mt-1 font-semibold">{{ display(order.customer.name) }}</p>
+                            </div>
+                        </div>
+
+                        <div v-if="routeError" class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                            {{ routeError }}
+                        </div>
+
+                        <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <button
+                                type="button"
+                                class="app-surface-soft app-text inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-semibold"
+                                :disabled="routeSaving"
+                                @click="closeRouteModal"
+                            >
+                                {{ routePromptAfterProcess ? 'No, dejar preparado' : 'Cancelar' }}
+                            </button>
+                            <button
+                                type="submit"
+                                class="app-primary inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold shadow-sm disabled:opacity-60"
+                                :disabled="routeSaving"
+                            >
+                                {{ routeSaving ? 'Marcando...' : 'Confirmar ruta' }}
                             </button>
                         </div>
                     </form>

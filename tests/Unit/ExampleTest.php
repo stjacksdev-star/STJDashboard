@@ -32,6 +32,7 @@ class ExampleTest extends TestCase
 
         $this->assertContains('Venta', $labels);
         $this->assertContains('Pendientes', $labels);
+        $this->assertContains('Procesados', $labels);
         $this->assertContains('Colecciones', collect($menu)->pluck('label')->all());
         $this->assertNotContains('Promociones', $labels);
     }

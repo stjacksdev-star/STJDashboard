@@ -57,6 +57,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.orders.lines.update');
     Route::post('/dashboard-api/orders/process', [OrderController::class, 'process'])
         ->name('dashboard-api.orders.process');
+    Route::post('/dashboard-api/orders/route', [OrderController::class, 'markInRoute'])
+        ->name('dashboard-api.orders.route');
+    Route::post('/dashboard-api/orders/deliver', [OrderController::class, 'deliver'])
+        ->name('dashboard-api.orders.deliver');
 
     Route::get('/colecciones', fn () => Inertia::render('Collections/Index'))
         ->name('collections.index');
@@ -66,6 +70,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('sales.index');
     Route::get('/pedidos/pendientes', fn () => Inertia::render('Orders/Pending'))
         ->name('orders.pending');
+    Route::get('/pedidos/procesados', fn () => Inertia::render('Orders/Processed'))
+        ->name('orders.processed');
     Route::get('/pedidos/consulta', fn (Request $request) => Inertia::render('Orders/Reference', [
         'initialCountry' => $request->string('country')->toString(),
         'initialReference' => $request->string('id')->toString(),
