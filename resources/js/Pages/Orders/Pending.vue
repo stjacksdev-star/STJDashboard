@@ -2,8 +2,9 @@
 import { Head, usePage } from '@inertiajs/vue3';
 import DataTable from 'datatables.net-vue3';
 import DataTablesCore from 'datatables.net-dt';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AdminLayout from '../../Layouts/AdminLayout.vue';
+import { printOrderReceipt } from '../../Support/orderReceipt';
 
 DataTable.use(DataTablesCore);
 
@@ -18,18 +19,19 @@ const tableKey = ref(0);
 
 const user = computed(() => page.props.auth?.user || {});
 const permissions = computed(() => page.props.auth?.permissions || []);
-const storeCode = computed(() => String(user.value?.tiendas || '00000'));
+const storeCode = computed(() => String(user.value?.storeCode || user.value?.tiendas || '00000'));
 const hasAssignedStore = computed(() => storeCode.value !== '' && storeCode.value !== '00000');
 const canUseGlobalFilters = computed(() =>
     permissions.value.includes('ROOT')
     || permissions.value.includes('STIE')
-    || permissions.value.includes('GERENTE'),
+    || permissions.value.includes('GERENTE')
+    || permissions.value.includes('SUPERVISOR'),
 );
 const showFilters = computed(() => canUseGlobalFilters.value && !hasAssignedStore.value);
 const resolvedStoreLabel = computed(() =>
     data.value.filters?.storeName
         ? `${data.value.filters.storeName} (${data.value.filters.store || user.value?.tiendas || 'N/D'})`
-        : user.value?.tiendas || 'N/D',
+        : user.value?.storeLabel || user.value?.tiendas || 'N/D',
 );
 
 const filters = ref({
@@ -49,6 +51,7 @@ const columns = [
     { data: 'paymentType', title: 'Pago' },
     { data: 'itemsLabel', title: 'Articulos', className: 'dt-right' },
     { data: 'amountLabel', title: 'Monto', className: 'dt-right' },
+    { data: 'actionsHtml', title: 'Acciones', orderable: false, searchable: false },
 ];
 
 const options = {
@@ -81,6 +84,7 @@ const rows = computed(() =>
         storeLabel: order.destination?.replace(/^Tienda:\s*/i, '') || 'N/D',
         itemsLabel: formatNumber(order.items),
         amountLabel: formatMoney(order.amount),
+        actionsHtml: actionsHtml(order),
     })),
 );
 
@@ -140,7 +144,7 @@ async function fetchStoreSummary() {
 
         const payload = response.data.data || {};
         countries.value = payload.countries || [];
-        stores.value = payload.pendingOrders?.rows || [];
+        stores.value = payload.stores || [];
 
         if (showFilters.value && filters.value.store) {
             const exists = stores.value.some((store) => String(store.storeId) === String(filters.value.store));
@@ -164,6 +168,17 @@ function submitFilters() {
     loadPage();
 }
 
+async function handleTableClick(event) {
+    const button = event.target.closest('[data-order-pdf]');
+
+    if (!button) {
+        return;
+    }
+
+    event.preventDefault();
+    await printOrderReceipt(button.getAttribute('data-country'), button.getAttribute('data-order-pdf'));
+}
+
 function activeCountry() {
     return showFilters.value ? filters.value.country : String(user.value?.idPais || '');
 }
@@ -176,6 +191,10 @@ function orderLink(order) {
     const url = `/pedidos/consulta?country=${encodeURIComponent(order.countryId)}&id=${encodeURIComponent(order.ref)}`;
 
     return `<a class="stj-link" href="${url}">${escapeHtml(order.ref)}</a>`;
+}
+
+function actionsHtml(order) {
+    return `<button type="button" class="stj-link stj-table-action" data-country="${escapeHtml(order.countryId)}" data-order-pdf="${escapeHtml(order.ref)}">PDF</button>`;
 }
 
 function today() {
@@ -229,6 +248,18 @@ onMounted(async () => {
 
     await loadPage();
 });
+
+watch(
+    () => filters.value.country,
+    async () => {
+        if (!showFilters.value) {
+            return;
+        }
+
+        filters.value.store = '';
+        await fetchStoreSummary();
+    },
+);
 </script>
 
 <template>
@@ -341,14 +372,15 @@ onMounted(async () => {
                     Cargando pedidos pendientes...
                 </div>
 
-                <DataTable
-                    :key="tableKey"
-                    v-else
-                    :data="rows"
-                    :columns="columns"
-                    :options="options"
-                    class="display stj-data-table w-full"
-                />
+                <div v-else @click="handleTableClick">
+                    <DataTable
+                        :key="tableKey"
+                        :data="rows"
+                        :columns="columns"
+                        :options="options"
+                        class="display stj-data-table w-full"
+                    />
+                </div>
             </div>
         </section>
     </AdminLayout>
@@ -363,5 +395,12 @@ onMounted(async () => {
 
 .stj-link:hover {
     text-decoration: underline;
+}
+
+.stj-table-action {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
 }
 </style>

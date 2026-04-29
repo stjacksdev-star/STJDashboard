@@ -86,6 +86,7 @@ const canDeliverCurrentOrder = computed(() =>
 );
 const hasProductsDifference = computed(() => Math.abs(roundMoney(order.value?.totals?.productsDifference || 0)) >= 0.01);
 const hasPaidDifference = computed(() => Math.abs(roundMoney(order.value?.totals?.paidDifference || 0)) >= 0.01);
+const hasRefund = computed(() => Boolean(order.value?.refund?.hasRefund));
 const processDifference = computed(() => roundMoney(order.value?.totals?.paidDifference || 0));
 const paymentIsCard = computed(() => String(order.value?.payment?.type || '').toUpperCase() === 'TARJETA');
 const processRefund = computed(() => paymentIsCard.value ? Math.max(0, -processDifference.value) : 0);
@@ -447,6 +448,18 @@ function signedMoney(value) {
     return `${amount > 0 ? '+' : ''}${currency.value} ${formatMoney(amount)}`;
 }
 
+function refundApprovalLabel(value) {
+    if (value === true) {
+        return 'SI';
+    }
+
+    if (value === false) {
+        return 'NO';
+    }
+
+    return 'N/D';
+}
+
 function normalizeStoreCode(value) {
     const code = String(value || '').trim();
 
@@ -631,6 +644,73 @@ onMounted(() => {
                                 <p class="mt-2 text-xs">{{ formatDateTime(step.date) }}</p>
                             </div>
                         </div>
+
+                        <div v-if="hasRefund" class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                            <div class="grid gap-4 lg:grid-cols-[1fr_2fr] lg:items-start">
+                                <div>
+                                    <p class="text-sm font-semibold uppercase">Devolucion</p>
+                                    <p class="mt-2 text-xl font-semibold">
+                                        {{ order.refund.label }} {{ currency }} {{ formatMoney(order.refund.amount) }}
+                                    </p>
+                                    <p class="mt-1 text-sm">Fecha: {{ formatDateTime(order.refund.date) }}</p>
+                                    <p class="mt-2 text-xs">
+                                        En un plazo aproximado de 7 dias habiles, el banco emisor de su tarjeta hara efectivo el reintegro de su dinero.
+                                    </p>
+                                </div>
+
+                                <div class="overflow-x-auto">
+                                    <table class="w-full min-w-[720px] text-sm">
+                                        <thead>
+                                            <tr class="bg-sky-200 text-left text-slate-900">
+                                                <th class="px-3 py-2">Fecha</th>
+                                                <th class="px-3 py-2">Autorizacion</th>
+                                                <th class="px-3 py-2">Orden</th>
+                                                <th class="px-3 py-2">Tipo</th>
+                                                <th class="px-3 py-2">Tarjeta</th>
+                                                <th class="px-3 py-2 text-right">Monto</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="border-b border-amber-200">
+                                                <td class="px-3 py-2">{{ formatDateTime(order.paidAt) }}</td>
+                                                <td class="px-3 py-2">{{ display(order.payment.authorization) }}</td>
+                                                <td class="px-3 py-2">{{ order.reference }}</td>
+                                                <td class="px-3 py-2">COMPRA</td>
+                                                <td class="px-3 py-2">{{ display(order.payment.card) }}</td>
+                                                <td class="px-3 py-2 text-right">{{ currency }} {{ formatMoney(order.totals.paid) }}</td>
+                                            </tr>
+                                            <tr class="border-b border-amber-200">
+                                                <td class="px-3 py-2">{{ formatDateTime(order.refund.date) }}</td>
+                                                <td class="px-3 py-2">N/D</td>
+                                                <td class="px-3 py-2">{{ order.reference }}</td>
+                                                <td class="px-3 py-2">DEVOLUCION</td>
+                                                <td class="px-3 py-2">{{ display(order.payment.card) }}</td>
+                                                <td class="px-3 py-2 text-right">{{ currency }} {{ formatMoney(order.refund.amount) }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-2" colspan="6">
+                                                    <div class="grid gap-2 sm:grid-cols-3">
+                                                        <div>
+                                                            <span class="font-semibold">Estado:</span>
+                                                            {{ order.refund.status }}
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-semibold">Aprobado:</span>
+                                                            {{ refundApprovalLabel(order.refund.approved) }}
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-semibold">Monto:</span>
+                                                            {{ currency }} {{ formatMoney(order.refund.amount) }}
+                                                        </div>
+                                                    </div>
+                                                    <pre class="mt-3 max-h-64 overflow-auto rounded-md border border-amber-200 bg-white/70 p-3 text-xs text-slate-900">{{ order.refund.serviceRaw || 'No se ha procesado la devolucion en FAC.' }}</pre>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -742,7 +822,7 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
                     <div class="app-surface rounded-lg border p-5">
                         <p class="app-muted text-xs font-semibold uppercase">Articulos</p>
                         <p class="app-text mt-2 text-2xl font-semibold">{{ formatNumber(order.totals.items) }}</p>
@@ -771,6 +851,18 @@ onMounted(() => {
                     <div class="app-surface rounded-lg border p-5">
                         <p class="app-muted text-xs font-semibold uppercase">Facturado</p>
                         <p class="app-text mt-2 text-2xl font-semibold">{{ currency }} {{ formatMoney(order.totals.billed) }}</p>
+                        <p v-if="hasRefund" class="mt-1 text-xs font-semibold text-amber-600">
+                            Antes de devolucion
+                        </p>
+                    </div>
+                    <div v-if="hasRefund" class="app-surface rounded-lg border p-5">
+                        <p class="app-muted text-xs font-semibold uppercase">Devolucion</p>
+                        <p class="mt-2 text-2xl font-semibold text-amber-600">-{{ currency }} {{ formatMoney(order.totals.refund) }}</p>
+                        <p class="mt-1 text-xs font-semibold text-amber-600">{{ order.refund.label }}</p>
+                    </div>
+                    <div v-if="hasRefund" class="app-surface rounded-lg border p-5">
+                        <p class="app-muted text-xs font-semibold uppercase">Total final</p>
+                        <p class="app-text mt-2 text-2xl font-semibold">{{ currency }} {{ formatMoney(order.totals.billedNet) }}</p>
                     </div>
                 </div>
 

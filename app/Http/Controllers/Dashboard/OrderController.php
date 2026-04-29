@@ -11,6 +11,130 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    public function refunds(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_DEVOLUCIONES')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para ver devoluciones.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'store' => ['nullable', 'string', 'max:20'],
+            'status' => ['nullable', 'in:SI,NO'],
+            'startDate' => ['nullable', 'date'],
+            'endDate' => ['nullable', 'date'],
+        ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+        $permissions = DashboardAccess::permissions($user);
+        $canUseGlobalFilters = $this->canUseGlobalFilters($permissions);
+        $hasAssignedStore = filled($user['storeCode'] ?? null)
+            || (filled($user['tiendas'] ?? null) && (string) $user['tiendas'] !== '00000');
+
+        if ($hasAssignedStore && ! $canUseGlobalFilters) {
+            $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
+            $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas']);
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->orderRefunds($validated),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible obtener las devoluciones desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function paymentAttempts(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para ver intentos de pago.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'order' => ['required', 'integer', 'min:1'],
+            'store' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+        $permissions = DashboardAccess::permissions($user);
+        $canUseGlobalFilters = $this->canUseGlobalFilters($permissions);
+        $hasAssignedStore = filled($user['storeCode'] ?? null)
+            || (filled($user['tiendas'] ?? null) && (string) $user['tiendas'] !== '00000');
+
+        if ($hasAssignedStore && ! $canUseGlobalFilters) {
+            $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
+            $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas']);
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->orderPaymentAttempts($validated),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible obtener los intentos de pago desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function search(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para buscar pedidos.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'query' => ['required', 'string', 'min:2', 'max:120'],
+            'store' => ['nullable', 'string', 'max:20'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $actor = $this->actor($request);
+        $user = (array) $request->session()->get('stj.user', []);
+        $permissions = DashboardAccess::permissions($user);
+        $canUseGlobalFilters = $this->canUseGlobalFilters($permissions);
+        $hasAssignedStore = filled($user['storeCode'] ?? null)
+            || (filled($user['tiendas'] ?? null) && (string) $user['tiendas'] !== '00000');
+
+        if ($hasAssignedStore && ! $canUseGlobalFilters) {
+            $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
+            $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas']);
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->searchOrders($validated, $actor),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible buscar pedidos desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     public function showByReference(Request $request, DashboardApiClient $api): JsonResponse
     {
         $validated = $request->validate([
@@ -205,5 +329,16 @@ class OrderController extends Controller
             'ip' => $request->ip(),
             'userAgent' => substr((string) $request->userAgent(), 0, 500),
         ];
+    }
+
+    /**
+     * @param array<int, string> $permissions
+     */
+    private function canUseGlobalFilters(array $permissions): bool
+    {
+        return in_array('ROOT', $permissions, true)
+            || in_array('STIE', $permissions, true)
+            || in_array('GERENTE', $permissions, true)
+            || in_array('SUPERVISOR', $permissions, true);
     }
 }

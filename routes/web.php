@@ -51,6 +51,12 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.sales.orders');
     Route::get('/dashboard-api/orders/reference', [OrderController::class, 'showByReference'])
         ->name('dashboard-api.orders.reference');
+    Route::get('/dashboard-api/orders/search', [OrderController::class, 'search'])
+        ->name('dashboard-api.orders.search');
+    Route::get('/dashboard-api/orders/payment-attempts', [OrderController::class, 'paymentAttempts'])
+        ->name('dashboard-api.orders.payment-attempts');
+    Route::get('/dashboard-api/orders/refunds', [OrderController::class, 'refunds'])
+        ->name('dashboard-api.orders.refunds');
     Route::get('/dashboard-api/orders/product', [OrderController::class, 'product'])
         ->name('dashboard-api.orders.product');
     Route::post('/dashboard-api/orders/lines/{line}', [OrderController::class, 'updateLine'])
@@ -72,6 +78,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('orders.pending');
     Route::get('/pedidos/procesados', fn () => Inertia::render('Orders/Processed'))
         ->name('orders.processed');
+    Route::get('/pedidos/devoluciones', fn () => Inertia::render('Orders/Refunds'))
+        ->name('orders.refunds');
+    Route::get('/pedidos/busqueda', fn () => Inertia::render('Orders/Search'))
+        ->name('orders.search');
     Route::get('/pedidos/consulta', fn (Request $request) => Inertia::render('Orders/Reference', [
         'initialCountry' => $request->string('country')->toString(),
         'initialReference' => $request->string('id')->toString(),
@@ -82,8 +92,6 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         '/cupones/mantenimiento' => 'Cupones / Mantenimiento',
         '/cupones/reportes' => 'Cupones / Reportes',
         '/pedidos/gestiones' => 'Pedidos / Gestiones',
-        '/pedidos/devoluciones' => 'Pedidos / Devoluciones',
-        '/pedidos/busqueda' => 'Pedidos / Busqueda',
         '/reportes/catalogo' => 'Reportes / Catalogo',
         '/reportes/suscriptores' => 'Reportes / Suscriptores',
         '/reportes/im/venta' => 'Reportes / IM Venta',

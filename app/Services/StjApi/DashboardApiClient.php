@@ -123,6 +123,79 @@ class DashboardApiClient
     }
 
     /**
+     * @param array<string, mixed> $filters
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function searchOrders(array $filters, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/orders/search', array_filter([
+                'country' => $filters['country'] ?? null,
+                'query' => $filters['query'] ?? null,
+                'store' => $filters['store'] ?? null,
+                'limit' => $filters['limit'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function orderPaymentAttempts(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/orders/payment-attempts', array_filter([
+                'country' => $filters['country'] ?? null,
+                'order' => $filters['order'] ?? null,
+                'store' => $filters['store'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function orderRefunds(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/orders/refunds', array_filter([
+                'country' => $filters['country'] ?? null,
+                'store' => $filters['store'] ?? null,
+                'status' => $filters['status'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      *
      * @throws RequestException

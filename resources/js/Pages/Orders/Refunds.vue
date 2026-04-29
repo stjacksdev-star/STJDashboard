@@ -4,21 +4,8 @@ import DataTable from 'datatables.net-vue3';
 import DataTablesCore from 'datatables.net-dt';
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminLayout from '../../Layouts/AdminLayout.vue';
-import { printOrderReceipt } from '../../Support/orderReceipt';
 
 DataTable.use(DataTablesCore);
-
-const processedStatuses = [
-    'PREPARADO',
-    'EN-RUTA',
-    'ENTREGADO',
-    'ANULADO-ERROR',
-    'ANULADO-PRUEBA',
-    'ANULADO-CLIENTE',
-    'ANULADO-INVENTARIO',
-    'DEVOLUCION',
-    'ANULADO-EFECTIVO',
-];
 
 const page = usePage();
 const loading = ref(true);
@@ -28,18 +15,25 @@ const data = ref(emptyData());
 const countries = ref([]);
 const stores = ref([]);
 const tableKey = ref(0);
+const detailModal = ref({
+    open: false,
+    title: '',
+    subtitle: '',
+    raw: '',
+    rejected: false,
+});
 
 const user = computed(() => page.props.auth?.user || {});
 const permissions = computed(() => page.props.auth?.permissions || []);
 const storeCode = computed(() => String(user.value?.storeCode || user.value?.tiendas || '00000'));
 const hasAssignedStore = computed(() => storeCode.value !== '' && storeCode.value !== '00000');
-const canUseCountryFilter = computed(() =>
+const canUseGlobalFilters = computed(() =>
     permissions.value.includes('ROOT')
     || permissions.value.includes('STIE')
     || permissions.value.includes('GERENTE')
     || permissions.value.includes('SUPERVISOR'),
 );
-const canUseStoreFilter = computed(() => canUseCountryFilter.value && !hasAssignedStore.value);
+const showStoreFilter = computed(() => canUseGlobalFilters.value && !hasAssignedStore.value);
 const resolvedStoreLabel = computed(() =>
     data.value.filters?.storeName
         ? `${data.value.filters.storeName} (${data.value.filters.store || user.value?.tiendas || 'N/D'})`
@@ -56,16 +50,14 @@ const filters = ref({
 
 const columns = [
     { data: 'referenceLink', title: 'Referencia' },
-    { data: 'paidAtLabel', title: 'Fecha' },
-    { data: 'status', title: 'Estado' },
+    { data: 'refundAtLabel', title: 'Fecha dev.' },
+    { data: 'paidAtLabel', title: 'Fecha pago' },
+    { data: 'refundLabel', title: 'Devolucion' },
+    { data: 'status', title: 'Pedido' },
     { data: 'storeLabel', title: 'Tienda' },
     { data: 'customer', title: 'Cliente' },
     { data: 'email', title: 'Email' },
-    { data: 'origin', title: 'Origen' },
-    { data: 'checkout', title: 'Checkout' },
-    { data: 'paymentType', title: 'Pago' },
-    { data: 'itemsLabel', title: 'Articulos', className: 'dt-right' },
-    { data: 'amountLabel', title: 'Monto', className: 'dt-right' },
+    { data: 'refundAmountLabel', title: 'Monto dev.', className: 'dt-right' },
     { data: 'actionsHtml', title: 'Acciones', orderable: false, searchable: false },
 ];
 
@@ -75,13 +67,13 @@ const options = {
     order: [[1, 'desc']],
     autoWidth: false,
     language: {
-        search: 'Buscar:',
+        search: 'Buscar: ',
         lengthMenu: 'Mostrar _MENU_ registros',
-        info: 'Mostrando _START_ a _END_ de _TOTAL_ pedidos',
-        infoEmpty: 'Sin pedidos',
+        info: 'Mostrando _START_ a _END_ de _TOTAL_ devoluciones',
+        infoEmpty: 'Sin devoluciones',
         infoFiltered: '(filtrado de _MAX_ registros)',
-        zeroRecords: 'No se encontraron pedidos procesados',
-        emptyTable: 'No hay pedidos procesados disponibles',
+        zeroRecords: 'No se encontraron devoluciones',
+        emptyTable: 'No hay devoluciones disponibles',
         paginate: {
             first: 'Primero',
             last: 'Ultimo',
@@ -92,55 +84,29 @@ const options = {
 };
 
 const rows = computed(() =>
-    data.value.orders.map((order) => ({
-        ...order,
-        referenceLink: orderLink(order),
-        paidAtLabel: formatDateTime(order.paidAt),
-        status: order.status || 'N/D',
-        storeLabel: order.destination?.replace(/^Tienda:\s*/i, '') || 'N/D',
-        itemsLabel: formatNumber(order.items),
-        amountLabel: formatMoney(order.amount),
-        actionsHtml: actionsHtml(order),
+    data.value.refunds.map((refund) => ({
+        ...refund,
+        referenceLink: orderLink(refund),
+        refundAtLabel: formatDateTime(refund.refundAt),
+        paidAtLabel: formatDateTime(refund.paidAt),
+        refundLabel: refund.refundLabel || 'N/D',
+        storeLabel: refund.storeName || refund.storeCode || 'N/D',
+        refundAmountLabel: formatMoney(refund.refundAmount),
+        actionsHtml: actionsHtml(refund),
     })),
 );
 
 const summaryCards = computed(() => [
-    { label: 'Pedidos', value: formatNumber(data.value.summary.orders) },
-    { label: 'Articulos', value: formatNumber(data.value.summary.items) },
+    { label: 'Devoluciones', value: formatNumber(data.value.summary.orders) },
+    { label: 'Pendientes', value: formatNumber(data.value.summary.pending) },
+    { label: 'Procesadas', value: formatNumber(data.value.summary.processed) },
     { label: 'Monto', value: formatMoney(data.value.summary.amount) },
 ]);
 
-async function fetchProcessedOrders() {
-    loading.value = true;
-    error.value = '';
-
-    try {
-        const params = {
-            country: activeCountry(),
-            statuses: activeStatuses(),
-            store: activeStore(),
-            startDate: filters.value.startDate,
-            endDate: filters.value.endDate,
-        };
-
-        const response = await window.axios.get('/dashboard-api/sales/orders', { params });
-        data.value = {
-            ...emptyData(),
-            ...(response.data.data || {}),
-        };
-        tableKey.value += 1;
-    } catch (exception) {
-        error.value = exception.response?.data?.message || 'No fue posible cargar los pedidos procesados.';
-        data.value = emptyData();
-        tableKey.value += 1;
-    } finally {
-        loading.value = false;
-    }
-}
-
-async function fetchCountries() {
-    if (!canUseCountryFilter.value) {
+async function fetchCatalog() {
+    if (!canUseGlobalFilters.value) {
         countries.value = [];
+        stores.value = [];
         return;
     }
 
@@ -154,12 +120,12 @@ async function fetchCountries() {
                 endDate: filters.value.endDate,
             },
         });
-
         const payload = response.data.data || {};
+
         countries.value = payload.countries || [];
         stores.value = payload.stores || [];
 
-        if (canUseStoreFilter.value && filters.value.store) {
+        if (showStoreFilter.value && filters.value.store) {
             const exists = stores.value.some((store) => String(store.storeId) === String(filters.value.store));
 
             if (!exists) {
@@ -167,51 +133,173 @@ async function fetchCountries() {
             }
         }
     } catch (exception) {
-        summaryError.value = exception.response?.data?.message || 'No fue posible cargar los paises disponibles.';
+        summaryError.value = exception.response?.data?.message || 'No fue posible cargar paises y tiendas.';
         stores.value = [];
     }
 }
 
+async function fetchRefunds() {
+    loading.value = true;
+    error.value = '';
+
+    try {
+        const response = await window.axios.get('/dashboard-api/orders/refunds', {
+            params: {
+                country: activeCountry(),
+                store: activeStore(),
+                status: filters.value.status || undefined,
+                startDate: filters.value.startDate,
+                endDate: filters.value.endDate,
+            },
+        });
+
+        data.value = {
+            ...emptyData(),
+            ...(response.data.data || {}),
+        };
+        tableKey.value += 1;
+    } catch (exception) {
+        error.value = exception.response?.data?.message || 'No fue posible cargar las devoluciones.';
+        data.value = emptyData();
+        tableKey.value += 1;
+    } finally {
+        loading.value = false;
+    }
+}
+
 async function loadPage() {
-    await fetchCountries();
-    await fetchProcessedOrders();
+    await fetchCatalog();
+    await fetchRefunds();
 }
 
 function submitFilters() {
     loadPage();
 }
 
-async function handleTableClick(event) {
-    const button = event.target.closest('[data-order-pdf]');
-
-    if (!button) {
-        return;
-    }
-
-    event.preventDefault();
-    await printOrderReceipt(button.getAttribute('data-country'), button.getAttribute('data-order-pdf'));
-}
-
 function activeCountry() {
-    return canUseCountryFilter.value ? filters.value.country : String(user.value?.idPais || '');
+    return canUseGlobalFilters.value ? filters.value.country : String(user.value?.idPais || '');
 }
 
 function activeStore() {
     return hasAssignedStore.value ? storeCode.value : filters.value.store || undefined;
 }
 
-function activeStatuses() {
-    return filters.value.status || processedStatuses.join(',');
+function handleTableClick(event) {
+    const viewButton = event.target.closest('[data-refund-view]');
+    const pdfButton = event.target.closest('[data-refund-pdf]');
+
+    if (viewButton) {
+        event.preventDefault();
+        openDetail(Number(viewButton.getAttribute('data-refund-view')), false);
+    }
+
+    if (pdfButton) {
+        event.preventDefault();
+        handlePdf(Number(pdfButton.getAttribute('data-refund-pdf')));
+    }
 }
 
-function orderLink(order) {
-    const url = `/pedidos/consulta?country=${encodeURIComponent(order.countryId)}&id=${encodeURIComponent(order.ref)}`;
+function openDetail(id, rejected) {
+    const refund = data.value.refunds.find((item) => Number(item.id) === Number(id));
 
-    return `<a class="stj-link" href="${url}">${escapeHtml(order.ref)}</a>`;
+    if (!refund) {
+        return;
+    }
+
+    detailModal.value = {
+        open: true,
+        title: rejected ? 'Devolucion rechazada' : 'Respuesta servicio',
+        subtitle: `${refund.ref || 'N/D'} - ${refund.customer || 'N/D'}`,
+        raw: refund.serviceRaw || 'No hay respuesta del servicio registrada.',
+        rejected,
+    };
 }
 
-function actionsHtml(order) {
-    return `<button type="button" class="stj-link stj-table-action" data-country="${escapeHtml(order.countryId)}" data-order-pdf="${escapeHtml(order.ref)}">PDF</button>`;
+function closeDetail() {
+    detailModal.value.open = false;
+}
+
+function handlePdf(id) {
+    const refund = data.value.refunds.find((item) => Number(item.id) === Number(id));
+
+    if (!refund) {
+        return;
+    }
+
+    if (refund.serviceApproved !== true) {
+        openDetail(id, true);
+        return;
+    }
+
+    printRefund(refund);
+}
+
+function printRefund(refund) {
+    const html = `<!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Comprobante devolucion ${escapeHtml(refund.ref)}</title>
+            <style>
+                body { font-family: Arial, sans-serif; color: #111827; margin: 32px; }
+                .header { border-bottom: 2px solid #1d4ed8; margin-bottom: 24px; padding-bottom: 16px; }
+                h1 { font-size: 24px; margin: 0; }
+                .muted { color: #6b7280; font-size: 12px; text-transform: uppercase; }
+                table { border-collapse: collapse; margin-top: 16px; width: 100%; }
+                td, th { border: 1px solid #d1d5db; padding: 10px; text-align: left; vertical-align: top; }
+                th { background: #f3f4f6; width: 32%; }
+                pre { white-space: pre-wrap; word-break: break-word; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <p class="muted">St. Jack's Admin</p>
+                <h1>Comprobante de devolucion</h1>
+            </div>
+            <table>
+                <tr><th>Referencia</th><td>${escapeHtml(refund.ref)}</td></tr>
+                <tr><th>Cliente</th><td>${escapeHtml(refund.customer)}</td></tr>
+                <tr><th>Email</th><td>${escapeHtml(refund.email)}</td></tr>
+                <tr><th>Estado devolucion</th><td>${escapeHtml(refund.refundLabel)}</td></tr>
+                <tr><th>Fecha devolucion</th><td>${escapeHtml(formatDateTime(refund.refundAt))}</td></tr>
+                <tr><th>Monto devolucion</th><td>${escapeHtml(formatMoney(refund.refundAmount))}</td></tr>
+                <tr><th>Tienda</th><td>${escapeHtml(refund.storeName || refund.storeCode || 'N/D')}</td></tr>
+                <tr><th>Aprobado</th><td>SI</td></tr>
+            </table>
+            <h2>Respuesta servicio</h2>
+            <pre>${escapeHtml(refund.serviceRaw || '')}</pre>
+        </body>
+        </html>`;
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+
+    if (!printWindow) {
+        return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+
+function actionsHtml(refund) {
+    const view = `<button type="button" class="stj-link stj-table-action" data-refund-view="${escapeHtml(refund.id)}">Ver</button>`;
+    const pdf = refund.refundStatus === 'SI'
+        ? `<button type="button" class="stj-link stj-table-action" data-refund-pdf="${escapeHtml(refund.id)}">PDF</button>`
+        : '';
+
+    return `<div class="stj-action-list">${view}${pdf}</div>`;
+}
+
+function orderLink(refund) {
+    if (!refund.ref) {
+        return `<span>Pedido ${escapeHtml(refund.id)}</span>`;
+    }
+
+    const url = `/pedidos/consulta?country=${encodeURIComponent(refund.countryId)}&id=${encodeURIComponent(refund.ref)}`;
+
+    return `<a class="stj-link" href="${url}">${escapeHtml(refund.ref)}</a>`;
 }
 
 function today() {
@@ -223,10 +311,11 @@ function emptyData() {
         filters: {},
         summary: {
             orders: 0,
-            items: 0,
+            pending: 0,
+            processed: 0,
             amount: 0,
         },
-        orders: [],
+        refunds: [],
     };
 }
 
@@ -259,7 +348,7 @@ function escapeHtml(value) {
 }
 
 onMounted(async () => {
-    if (!canUseCountryFilter.value) {
+    if (!canUseGlobalFilters.value) {
         filters.value.country = String(user.value?.idPais || '');
     }
 
@@ -269,37 +358,33 @@ onMounted(async () => {
 watch(
     () => filters.value.country,
     async () => {
-        if (!canUseCountryFilter.value) {
+        if (!canUseGlobalFilters.value) {
             return;
         }
 
         filters.value.store = '';
-        await fetchCountries();
+        await fetchCatalog();
     },
 );
 </script>
 
 <template>
-    <Head title="Pedidos / Procesados" />
+    <Head title="Pedidos / Devoluciones" />
 
     <AdminLayout>
         <section class="mx-auto w-full max-w-7xl">
             <div class="app-surface rounded-lg border p-6">
                 <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <p class="app-primary-text text-sm font-semibold uppercase">
-                            Pedidos
-                        </p>
-                        <h1 class="app-text mt-3 text-3xl font-semibold">
-                            Procesados
-                        </h1>
+                        <p class="app-primary-text text-sm font-semibold uppercase">Pedidos</p>
+                        <h1 class="app-text mt-3 text-3xl font-semibold">Devoluciones</h1>
                         <p class="app-muted mt-2 max-w-3xl text-sm leading-6">
-                            Listado de pedidos preparados, en ruta, entregados, anulados o con devolucion.
+                            Pedidos con devolucion pendiente o procesada.
                         </p>
                     </div>
 
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div v-if="!canUseCountryFilter" class="app-surface-soft rounded-md border px-4 py-3 text-sm">
+                    <div v-if="!canUseGlobalFilters || hasAssignedStore" class="grid gap-3 sm:grid-cols-2">
+                        <div v-if="!canUseGlobalFilters" class="app-surface-soft rounded-md border px-4 py-3 text-sm">
                             <span class="app-muted">Pais:</span>
                             <span class="app-text ml-2 font-semibold">{{ user?.pais || 'N/D' }}</span>
                         </div>
@@ -314,7 +399,7 @@ watch(
                     class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]"
                     @submit.prevent="submitFilters"
                 >
-                    <label v-if="canUseCountryFilter" class="block text-sm font-semibold">
+                    <label v-if="canUseGlobalFilters" class="block text-sm font-semibold">
                         <span class="app-muted">Pais</span>
                         <select
                             v-model="filters.country"
@@ -328,7 +413,7 @@ watch(
                         </select>
                     </label>
 
-                    <label v-if="canUseStoreFilter" class="block text-sm font-semibold">
+                    <label v-if="showStoreFilter" class="block text-sm font-semibold">
                         <span class="app-muted">Tienda</span>
                         <select
                             v-model="filters.store"
@@ -348,9 +433,8 @@ watch(
                             class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
                         >
                             <option value="">Todos</option>
-                            <option v-for="status in processedStatuses" :key="status" :value="status">
-                                {{ status }}
-                            </option>
+                            <option value="NO">Devolucion pendiente</option>
+                            <option value="SI">Devolucion procesada</option>
                         </select>
                     </label>
 
@@ -395,12 +479,8 @@ watch(
                 {{ error }}
             </div>
 
-            <div class="mt-6 grid gap-4 sm:grid-cols-3">
-                <div
-                    v-for="card in summaryCards"
-                    :key="card.label"
-                    class="app-surface rounded-lg border p-5"
-                >
+            <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div v-for="card in summaryCards" :key="card.label" class="app-surface rounded-lg border p-5">
                     <p class="app-muted text-xs font-semibold uppercase">{{ card.label }}</p>
                     <p class="app-text mt-2 text-2xl font-semibold">{{ card.value }}</p>
                 </div>
@@ -408,7 +488,7 @@ watch(
 
             <div class="app-surface mt-6 rounded-lg border p-4">
                 <div v-if="loading" class="app-muted px-4 py-8 text-center text-sm">
-                    Cargando pedidos procesados...
+                    Cargando devoluciones...
                 </div>
 
                 <div v-else @click="handleTableClick">
@@ -422,6 +502,36 @@ watch(
                 </div>
             </div>
         </section>
+
+        <div
+            v-if="detailModal.open"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6"
+            @click.self="closeDetail"
+        >
+            <div class="app-surface max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg border shadow-xl">
+                <div class="flex items-start justify-between gap-4 border-b px-5 py-4">
+                    <div>
+                        <p class="app-primary-text text-xs font-semibold uppercase">Devoluciones</p>
+                        <h2 class="app-text mt-1 text-xl font-semibold">{{ detailModal.title }}</h2>
+                        <p class="app-muted mt-1 text-sm">{{ detailModal.subtitle }}</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="app-surface-soft app-text rounded-md border px-3 py-2 text-sm font-semibold"
+                        @click="closeDetail"
+                    >
+                        Cerrar
+                    </button>
+                </div>
+
+                <div class="max-h-[calc(90vh-88px)] overflow-auto p-5">
+                    <div v-if="detailModal.rejected" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                        La devolucion fue rechazada por el servicio. Revise el detalle de la respuesta.
+                    </div>
+                    <pre class="app-surface-soft app-text overflow-auto rounded-md border p-4 text-xs">{{ detailModal.raw }}</pre>
+                </div>
+            </div>
+        </div>
     </AdminLayout>
 </template>
 
@@ -441,5 +551,11 @@ watch(
     border: 0;
     cursor: pointer;
     padding: 0;
+}
+
+.stj-action-list {
+    display: flex;
+    gap: 10px;
+    white-space: nowrap;
 }
 </style>

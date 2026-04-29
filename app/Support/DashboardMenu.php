@@ -35,7 +35,7 @@ class DashboardMenu
                     self::item('Procesados', '/pedidos/procesados', 'clipboard', 'MENU_PEDIDOS'),
                     self::item('Devoluciones', '/pedidos/devoluciones', 'refresh', 'MENU_DEVOLUCIONES'),
                     self::group('Busqueda', 'search', [
-                        self::item('General', '/pedidos/busqueda'),
+                        self::item('General', '/pedidos/busqueda', permission: 'MENU_PEDIDOS'),
                         self::item('Referencia', '/pedidos/consulta'),
                     ]),
                 ],
