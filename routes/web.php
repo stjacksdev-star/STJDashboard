@@ -5,6 +5,8 @@ use App\Http\Controllers\Dashboard\CollectionController;
 use App\Http\Controllers\Dashboard\OrderController;
 use App\Http\Controllers\Dashboard\PromotionController;
 use App\Http\Controllers\Dashboard\ProductCategoryController;
+use App\Http\Controllers\Dashboard\ProductCountryController;
+use App\Http\Controllers\Dashboard\ProductMasterController;
 use App\Http\Controllers\Dashboard\SalesController;
 use App\Http\Middleware\EnsureCasAuthenticated;
 use Illuminate\Http\Request;
@@ -54,6 +56,24 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.product-categories.update');
     Route::delete('/dashboard-api/product-categories/{category}', [ProductCategoryController::class, 'destroy'])
         ->name('dashboard-api.product-categories.destroy');
+    Route::get('/dashboard-api/products/master', [ProductMasterController::class, 'index'])
+        ->name('dashboard-api.products.master.index');
+    Route::post('/dashboard-api/products/master/import', [ProductMasterController::class, 'import'])
+        ->name('dashboard-api.products.master.import');
+    Route::post('/dashboard-api/products/master/photos/import', [ProductMasterController::class, 'importPhotos'])
+        ->name('dashboard-api.products.master.photos.import');
+    Route::get('/dashboard-api/products/master/{product}', [ProductMasterController::class, 'show'])
+        ->name('dashboard-api.products.master.show');
+    Route::get('/dashboard-api/products/master/{product}/photos', [ProductMasterController::class, 'photos'])
+        ->name('dashboard-api.products.master.photos');
+    Route::get('/dashboard-api/products/master/{product}/countries', [ProductMasterController::class, 'countries'])
+        ->name('dashboard-api.products.master.countries');
+    Route::get('/dashboard-api/products/country/countries', [ProductCountryController::class, 'countries'])
+        ->name('dashboard-api.products.country.countries');
+    Route::post('/dashboard-api/products/country/import', [ProductCountryController::class, 'import'])
+        ->name('dashboard-api.products.country.import');
+    Route::post('/dashboard-api/products/country/deactivate', [ProductCountryController::class, 'deactivate'])
+        ->name('dashboard-api.products.country.deactivate');
     Route::get('/dashboard-api/sales/kpi', [SalesController::class, 'kpi'])
         ->name('dashboard-api.sales.kpi');
     Route::get('/dashboard-api/sales/regional-chart', [SalesController::class, 'regionalChart'])
@@ -89,6 +109,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('promotions.index');
     Route::get('/productos/categorias', fn () => Inertia::render('Products/Categories'))
         ->name('products.categories');
+    Route::get('/productos/catalogo', fn () => Inertia::render('Products/Master'))
+        ->name('products.master');
+    Route::get('/productos/pais', fn () => Inertia::render('Products/Country'))
+        ->name('products.country');
     Route::get('/venta', fn () => Inertia::render('Sales/Index'))
         ->name('sales.index');
     Route::get('/pedidos/pendientes', fn () => Inertia::render('Orders/Pending'))
@@ -118,8 +142,6 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         '/reportes/contabilidad/venta-general' => 'Reportes / Contabilidad',
         '/reportes/contabilidad/venta-general-2' => 'Reportes / Contabilidad 2',
         '/reportes/contabilidad/venta-general-3' => 'Reportes / Contabilidad 3',
-        '/productos/catalogo' => 'Productos / Maestro',
-        '/productos/pais' => 'Productos / Por pais',
         '/configuracion/log' => 'Configuracion / LOG',
         '/configuracion/slides' => 'Configuracion / Slides',
         '/configuracion/imagenes' => 'Configuracion / Imagenes',

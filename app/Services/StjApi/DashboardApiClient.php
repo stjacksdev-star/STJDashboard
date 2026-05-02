@@ -651,6 +651,180 @@ class DashboardApiClient
     }
 
     /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function productMaster(?string $search = null): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/products/master', array_filter([
+                'search' => $search,
+                'limit' => 300,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function importProductMaster(UploadedFile $file): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(max(120, (int) config('stj.api.timeout')))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->attach('file', fopen($file->getRealPath(), 'rb'), $file->getClientOriginalName())
+            ->post('/dashboard/products/master/import');
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function importProductPhotos(UploadedFile $file): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(max(180, (int) config('stj.api.timeout')))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->attach('file', fopen($file->getRealPath(), 'rb'), $file->getClientOriginalName())
+            ->post('/dashboard/products/master/photos/import');
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function productMasterDetail(int $product): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get("/dashboard/products/master/{$product}");
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function productMasterPhotos(int $product): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get("/dashboard/products/master/{$product}/photos");
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function productMasterCountries(int $product): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get("/dashboard/products/master/{$product}/countries");
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function productCountryCountries(): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/products/country/countries');
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function importProductCountry(int $country, UploadedFile $file): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(max(180, (int) config('stj.api.timeout')))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->attach('file', fopen($file->getRealPath(), 'rb'), $file->getClientOriginalName())
+            ->post('/dashboard/products/country/import', [
+                'country' => $country,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function deactivateProductCountry(int $country, string $reason, UploadedFile $file): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(max(180, (int) config('stj.api.timeout')))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->attach('file', fopen($file->getRealPath(), 'rb'), $file->getClientOriginalName())
+            ->post('/dashboard/products/country/deactivate', [
+                'country' => $country,
+                'reason' => $reason,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      *
