@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Dashboard\CollectionController;
 use App\Http\Controllers\Dashboard\OrderController;
 use App\Http\Controllers\Dashboard\PromotionController;
+use App\Http\Controllers\Dashboard\ProductCategoryController;
 use App\Http\Controllers\Dashboard\SalesController;
 use App\Http\Middleware\EnsureCasAuthenticated;
 use Illuminate\Http\Request;
@@ -45,8 +46,22 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.promotions.assets.destroy');
     Route::post('/dashboard-api/promotions/{promotion}/header', [PromotionController::class, 'updateHeader'])
         ->name('dashboard-api.promotions.header.update');
+    Route::get('/dashboard-api/product-categories', [ProductCategoryController::class, 'index'])
+        ->name('dashboard-api.product-categories.index');
+    Route::post('/dashboard-api/product-categories', [ProductCategoryController::class, 'store'])
+        ->name('dashboard-api.product-categories.store');
+    Route::post('/dashboard-api/product-categories/{category}', [ProductCategoryController::class, 'update'])
+        ->name('dashboard-api.product-categories.update');
+    Route::delete('/dashboard-api/product-categories/{category}', [ProductCategoryController::class, 'destroy'])
+        ->name('dashboard-api.product-categories.destroy');
     Route::get('/dashboard-api/sales/kpi', [SalesController::class, 'kpi'])
         ->name('dashboard-api.sales.kpi');
+    Route::get('/dashboard-api/sales/regional-chart', [SalesController::class, 'regionalChart'])
+        ->name('dashboard-api.sales.regional-chart');
+    Route::get('/dashboard-api/sales/conversion', [SalesController::class, 'conversion'])
+        ->name('dashboard-api.sales.conversion');
+    Route::get('/dashboard-api/sales/visits', [SalesController::class, 'visits'])
+        ->name('dashboard-api.sales.visits');
     Route::get('/dashboard-api/sales/orders', [SalesController::class, 'orders'])
         ->name('dashboard-api.sales.orders');
     Route::get('/dashboard-api/orders/reference', [OrderController::class, 'showByReference'])
@@ -72,6 +87,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('collections.index');
     Route::get('/promociones', fn () => Inertia::render('Promotions/Index'))
         ->name('promotions.index');
+    Route::get('/productos/categorias', fn () => Inertia::render('Products/Categories'))
+        ->name('products.categories');
     Route::get('/venta', fn () => Inertia::render('Sales/Index'))
         ->name('sales.index');
     Route::get('/pedidos/pendientes', fn () => Inertia::render('Orders/Pending'))
@@ -101,7 +118,6 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         '/reportes/contabilidad/venta-general' => 'Reportes / Contabilidad',
         '/reportes/contabilidad/venta-general-2' => 'Reportes / Contabilidad 2',
         '/reportes/contabilidad/venta-general-3' => 'Reportes / Contabilidad 3',
-        '/productos/categorias' => 'Productos / Categorias',
         '/productos/catalogo' => 'Productos / Maestro',
         '/productos/pais' => 'Productos / Por pais',
         '/configuracion/log' => 'Configuracion / LOG',

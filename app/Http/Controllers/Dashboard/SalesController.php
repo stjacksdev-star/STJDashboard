@@ -36,6 +36,80 @@ class SalesController extends Controller
         }
     }
 
+    public function regionalChart(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        $validated = $request->validate([
+            'startDate' => ['nullable', 'date'],
+            'endDate' => ['nullable', 'date'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->regionalSalesChart(
+                    $validated['startDate'] ?? null,
+                    $validated['endDate'] ?? null,
+                ),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible obtener el grafico regional de ventas desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function conversion(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        $validated = $request->validate([
+            'startDate' => ['nullable', 'date'],
+            'endDate' => ['nullable', 'date'],
+            'country' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->conversionChart(
+                    $validated['startDate'] ?? null,
+                    $validated['endDate'] ?? null,
+                    $validated['country'] ?? null,
+                ),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible obtener la conversion desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function visits(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        $validated = $request->validate([
+            'startDate' => ['nullable', 'date'],
+            'endDate' => ['nullable', 'date'],
+            'country' => ['nullable', 'string', 'max:20'],
+            'previousStartDate' => ['nullable', 'date'],
+            'previousEndDate' => ['nullable', 'date'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->visitsChart($validated),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible obtener las visitas desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     public function orders(Request $request, DashboardApiClient $api): JsonResponse
     {
         if ($request->has('pending')) {

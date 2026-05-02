@@ -74,6 +74,73 @@ class DashboardApiClient
     }
 
     /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function regionalSalesChart(?string $startDate = null, ?string $endDate = null): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/sales/regional-chart', array_filter([
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function conversionChart(?string $startDate = null, ?string $endDate = null, ?string $country = null): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/sales/conversion', array_filter([
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'country' => $country,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function visitsChart(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/sales/visits', array_filter([
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+                'country' => $filters['country'] ?? null,
+                'previousStartDate' => $filters['previousStartDate'] ?? null,
+                'previousEndDate' => $filters['previousEndDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
      * @param array<string, mixed> $filters
      * @return array<string, mixed>
      *
@@ -501,6 +568,86 @@ class DashboardApiClient
         $response->throw();
 
         return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function productCategories(): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/product-categories', [
+                'limit' => 500,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function createProductCategory(array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/product-categories', [
+                ...$data,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function updateProductCategory(int $category, array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post("/dashboard/product-categories/{$category}", [
+                ...$data,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public function deleteProductCategory(int $category): void
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->delete("/dashboard/product-categories/{$category}");
+
+        $response->throw();
     }
 
     /**
