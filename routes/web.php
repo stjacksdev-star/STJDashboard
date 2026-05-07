@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Dashboard\AccountingReportController;
 use App\Http\Controllers\Dashboard\CollectionController;
 use App\Http\Controllers\Dashboard\OrderController;
 use App\Http\Controllers\Dashboard\PromotionController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Dashboard\ProductCategoryController;
 use App\Http\Controllers\Dashboard\ProductCountryController;
 use App\Http\Controllers\Dashboard\ProductMasterController;
 use App\Http\Controllers\Dashboard\SalesController;
+use App\Http\Controllers\Dashboard\StoreReportController;
 use App\Http\Middleware\EnsureCasAuthenticated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -92,6 +94,26 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.orders.payment-attempts');
     Route::get('/dashboard-api/orders/refunds', [OrderController::class, 'refunds'])
         ->name('dashboard-api.orders.refunds');
+    Route::get('/dashboard-api/orders/refunds/{order}/pdf', [OrderController::class, 'refundPdf'])
+        ->name('dashboard-api.orders.refunds.pdf');
+    Route::get('/dashboard-api/orders/processed-pdf', [OrderController::class, 'processedPdf'])
+        ->name('dashboard-api.orders.processed-pdf');
+    Route::get('/dashboard-api/reports/store/catalog', [StoreReportController::class, 'catalog'])
+        ->name('dashboard-api.reports.store.catalog');
+    Route::get('/dashboard-api/reports/store/virtual-cut', [StoreReportController::class, 'virtualCut'])
+        ->name('dashboard-api.reports.store.virtual-cut');
+    Route::get('/dashboard-api/reports/store/virtual-cut/pdf', [StoreReportController::class, 'virtualCutPdf'])
+        ->name('dashboard-api.reports.store.virtual-cut.pdf');
+    Route::get('/dashboard-api/reports/store/pending-items', [StoreReportController::class, 'pendingItems'])
+        ->name('dashboard-api.reports.store.pending-items');
+    Route::get('/dashboard-api/reports/store/pending-items-by-order', [StoreReportController::class, 'pendingItemsByOrder'])
+        ->name('dashboard-api.reports.store.pending-items-by-order');
+    Route::get('/dashboard-api/reports/accounting/3/count', [AccountingReportController::class, 'count3'])
+        ->name('dashboard-api.reports.accounting.3.count');
+    Route::get('/dashboard-api/reports/accounting/3/export', [AccountingReportController::class, 'export3'])
+        ->name('dashboard-api.reports.accounting.3.export');
+    Route::get('/dashboard-api/reports/accounting/sales-by-store/pdf', [AccountingReportController::class, 'salesByStorePdf'])
+        ->name('dashboard-api.reports.accounting.sales-by-store.pdf');
     Route::get('/dashboard-api/orders/product', [OrderController::class, 'product'])
         ->name('dashboard-api.orders.product');
     Route::post('/dashboard-api/orders/lines/{line}', [OrderController::class, 'updateLine'])
@@ -127,6 +149,16 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         'initialCountry' => $request->string('country')->toString(),
         'initialReference' => $request->string('id')->toString(),
     ]))->name('orders.reference');
+    Route::get('/reportes/corte-virtual', fn () => Inertia::render('Reports/StoreVirtualCut'))
+        ->name('reports.store.virtual-cut');
+    Route::get('/reportes/articulos-pendientes', fn () => Inertia::render('Reports/PendingItems'))
+        ->name('reports.pending-items');
+    Route::get('/reportes/articulos-pendientes-pedido', fn () => Inertia::render('Reports/PendingItemsByOrder'))
+        ->name('reports.pending-items-by-order');
+    Route::get('/reportes/contabilidad/venta-general-3', fn () => Inertia::render('Reports/Accounting3'))
+        ->name('reports.accounting.3');
+    Route::get('/reportes/contabilidad/venta-general', fn () => Inertia::render('Reports/AccountingSalesByStore'))
+        ->name('reports.accounting.sales-by-store');
 
     foreach ([
         '/citas' => 'Citas',
@@ -136,12 +168,7 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         '/reportes/catalogo' => 'Reportes / Catalogo',
         '/reportes/suscriptores' => 'Reportes / Suscriptores',
         '/reportes/im/venta' => 'Reportes / IM Venta',
-        '/reportes/corte-virtual' => 'Reportes / Corte Virtual',
-        '/reportes/articulos-pendientes' => 'Reportes / Articulos pendientes',
-        '/reportes/articulos-pendientes-pedido' => 'Reportes / Articulos pendientes por pedido',
-        '/reportes/contabilidad/venta-general' => 'Reportes / Contabilidad',
         '/reportes/contabilidad/venta-general-2' => 'Reportes / Contabilidad 2',
-        '/reportes/contabilidad/venta-general-3' => 'Reportes / Contabilidad 3',
         '/configuracion/log' => 'Configuracion / LOG',
         '/configuracion/slides' => 'Configuracion / Slides',
         '/configuracion/imagenes' => 'Configuracion / Imagenes',

@@ -1,0 +1,389 @@
+<script setup>
+import { Head, usePage } from '@inertiajs/vue3';
+import DataTable from 'datatables.net-vue3';
+import DataTablesCore from 'datatables.net-dt';
+import { computed, onMounted, ref, watch } from 'vue';
+import AdminLayout from '../../Layouts/AdminLayout.vue';
+
+DataTable.use(DataTablesCore);
+
+const page = usePage();
+const loading = ref(false);
+const catalogLoading = ref(true);
+const error = ref('');
+const catalogError = ref('');
+const countries = ref([]);
+const data = ref(emptyData());
+const tableKey = ref(0);
+
+const user = computed(() => page.props.auth?.user || {});
+const permissions = computed(() => page.props.auth?.permissions || []);
+const storeCode = computed(() => String(user.value?.storeCode || user.value?.tiendas || '00000'));
+const hasAssignedStore = computed(() => storeCode.value !== '' && storeCode.value !== '00000');
+const canUseGlobalFilters = computed(() =>
+    permissions.value.includes('ROOT')
+    || permissions.value.includes('STIE')
+    || permissions.value.includes('GERENTE')
+    || permissions.value.includes('SUPERVISOR'),
+);
+const resolvedStoreLabel = computed(() =>
+    data.value.filters?.storeName
+        ? `${data.value.filters.storeName} (${data.value.filters.store || storeCode.value || 'N/D'})`
+        : user.value?.storeLabel || user.value?.tiendas || 'N/D',
+);
+
+const filters = ref({
+    country: String(user.value?.idPais || ''),
+    startDate: today(),
+    endDate: today(),
+});
+
+const columns = [
+    { data: 'referenceLink', title: 'Pedido' },
+    { data: 'paidAtLabel', title: 'Fecha' },
+    { data: 'product', title: 'Producto' },
+    { data: 'sku', title: 'SKU' },
+    { data: 'size', title: 'Talla', className: 'dt-center' },
+    { data: 'quantityLabel', title: 'Cantidad', className: 'dt-right' },
+    { data: 'imageHtml', title: 'Imagen', orderable: false, searchable: false },
+];
+
+const options = {
+    pageLength: 25,
+    lengthMenu: [10, 25, 50, 100],
+    order: [[1, 'asc']],
+    autoWidth: false,
+    language: {
+        search: 'Buscar:',
+        lengthMenu: 'Mostrar _MENU_ registros',
+        info: 'Mostrando _START_ a _END_ de _TOTAL_ articulos',
+        infoEmpty: 'Sin articulos',
+        infoFiltered: '(filtrado de _MAX_ registros)',
+        zeroRecords: 'No se encontraron articulos pendientes por pedido',
+        emptyTable: 'No hay articulos pendientes por pedido disponibles',
+        paginate: {
+            first: 'Primero',
+            last: 'Ultimo',
+            next: 'Siguiente',
+            previous: 'Anterior',
+        },
+    },
+};
+
+const rows = computed(() =>
+    data.value.rows.map((row) => ({
+        ...row,
+        referenceLink: orderLink(row),
+        paidAtLabel: formatDateTime(row.paidAt),
+        quantityLabel: formatNumber(row.quantity),
+        imageHtml: imageHtml(row),
+    })),
+);
+
+const summaryCards = computed(() => [
+    { label: 'Pedidos', value: formatNumber(data.value.summary.orders) },
+    { label: 'Registros', value: formatNumber(data.value.summary.rows) },
+    { label: 'Unidades', value: formatNumber(data.value.summary.quantity) },
+]);
+
+async function fetchCatalog() {
+    catalogLoading.value = true;
+    catalogError.value = '';
+
+    if (!canUseGlobalFilters.value) {
+        countries.value = [];
+        catalogLoading.value = false;
+        return;
+    }
+
+    try {
+        const response = await window.axios.get('/dashboard-api/reports/store/catalog', {
+            params: {
+                country: activeCountry(),
+            },
+        });
+        const payload = response.data.data || {};
+        countries.value = payload.countries || [];
+    } catch (exception) {
+        catalogError.value = exception.response?.data?.message || 'No fue posible cargar paises.';
+    } finally {
+        catalogLoading.value = false;
+    }
+}
+
+async function fetchReport() {
+    loading.value = true;
+    error.value = '';
+
+    try {
+        const response = await window.axios.get('/dashboard-api/reports/store/pending-items-by-order', {
+            params: {
+                country: activeCountry(),
+                startDate: filters.value.startDate,
+                endDate: filters.value.endDate,
+            },
+        });
+
+        data.value = {
+            ...emptyData(),
+            ...(response.data.data || {}),
+        };
+        tableKey.value += 1;
+    } catch (exception) {
+        error.value = exception.response?.data?.message || 'No fue posible cargar los articulos pendientes por pedido.';
+        data.value = emptyData();
+        tableKey.value += 1;
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function submitFilters() {
+    await fetchReport();
+}
+
+function exportCsv() {
+    const header = ['Pedido', 'Fecha', 'Producto', 'SKU', 'Talla', 'Cantidad', 'Imagen'];
+    const lines = data.value.rows.map((row) => [
+        row.reference,
+        formatDateTime(row.paidAt),
+        row.product,
+        row.sku,
+        row.size,
+        row.quantity,
+        row.imageUrl,
+    ]);
+    const csv = [header, ...lines]
+        .map((line) => line.map(csvCell).join(','))
+        .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `articulos-pendientes-pedido-${filters.value.startDate}-${filters.value.endDate}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+function activeCountry() {
+    return canUseGlobalFilters.value ? filters.value.country : String(user.value?.idPais || '');
+}
+
+function orderLink(row) {
+    if (!row.reference) {
+        return '<span>N/D</span>';
+    }
+
+    const url = `/pedidos/consulta?country=${encodeURIComponent(activeCountry())}&id=${encodeURIComponent(row.reference)}`;
+
+    return `<a class="stj-link" href="${url}">${escapeHtml(row.reference)}</a>`;
+}
+
+function imageHtml(row) {
+    if (!row.imageUrl) {
+        return '<span class="app-muted">N/D</span>';
+    }
+
+    return `<img class="stj-pending-thumb" src="${escapeHtml(row.imageUrl)}" alt="${escapeHtml(row.sku)}" loading="lazy">`;
+}
+
+function today() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function emptyData() {
+    return {
+        filters: {},
+        summary: {
+            orders: 0,
+            rows: 0,
+            quantity: 0,
+        },
+        rows: [],
+    };
+}
+
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('en-US');
+}
+
+function formatDateTime(value) {
+    if (!value) {
+        return 'N/D';
+    }
+
+    return String(value).replace('T', ' ').slice(0, 16);
+}
+
+function csvCell(value) {
+    return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+onMounted(async () => {
+    if (!canUseGlobalFilters.value) {
+        filters.value.country = String(user.value?.idPais || '');
+    }
+
+    await fetchCatalog();
+    await fetchReport();
+});
+
+watch(
+    () => filters.value.country,
+    async () => {
+        if (!canUseGlobalFilters.value) {
+            return;
+        }
+
+        await fetchCatalog();
+    },
+);
+</script>
+
+<template>
+    <Head title="Reportes / Articulos pendientes por pedido" />
+
+    <AdminLayout>
+        <section class="mx-auto w-full max-w-7xl">
+            <div class="app-surface rounded-lg border p-6">
+                <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p class="app-primary-text text-sm font-semibold uppercase">
+                            Reportes / Tiendas
+                        </p>
+                        <h1 class="app-text mt-3 text-3xl font-semibold">
+                            Articulos pendientes por pedido
+                        </h1>
+                        <p class="app-muted mt-2 max-w-3xl text-sm leading-6">
+                            Detalle de articulos vendidos pendientes de entregar, separado por referencia.
+                        </p>
+                    </div>
+
+                    <div v-if="!canUseGlobalFilters || hasAssignedStore" class="grid gap-3 sm:grid-cols-2">
+                        <div v-if="!canUseGlobalFilters" class="app-surface-soft rounded-md border px-4 py-3 text-sm">
+                            <span class="app-muted">Pais:</span>
+                            <span class="app-text ml-2 font-semibold">{{ user?.pais || 'N/D' }}</span>
+                        </div>
+                        <div v-if="hasAssignedStore" class="app-surface-soft rounded-md border px-4 py-3 text-sm">
+                            <span class="app-muted">Tienda:</span>
+                            <span class="app-text ml-2 font-semibold">{{ resolvedStoreLabel }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form
+                    class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto_auto]"
+                    @submit.prevent="submitFilters"
+                >
+                    <label v-if="canUseGlobalFilters" class="block text-sm font-semibold">
+                        <span class="app-muted">Pais</span>
+                        <select
+                            v-model="filters.country"
+                            class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                            required
+                        >
+                            <option value="">-- Seleccione --</option>
+                            <option v-for="country in countries" :key="country.id" :value="String(country.id)">
+                                {{ country.code }} - {{ country.name }}
+                            </option>
+                        </select>
+                    </label>
+
+                    <label class="block text-sm font-semibold">
+                        <span class="app-muted">Fecha inicial</span>
+                        <input
+                            v-model="filters.startDate"
+                            type="date"
+                            class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                            required
+                        />
+                    </label>
+
+                    <label class="block text-sm font-semibold">
+                        <span class="app-muted">Fecha final</span>
+                        <input
+                            v-model="filters.endDate"
+                            type="date"
+                            class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                            required
+                        />
+                    </label>
+
+                    <button
+                        type="submit"
+                        class="app-primary inline-flex h-11 items-center justify-center gap-2 self-end rounded-md px-5 text-sm font-semibold shadow-sm disabled:opacity-60"
+                        :disabled="loading || catalogLoading"
+                    >
+                        {{ loading ? 'Buscando...' : 'Generar' }}
+                    </button>
+
+                    <button
+                        type="button"
+                        class="app-surface app-text inline-flex h-11 items-center justify-center gap-2 self-end rounded-md border px-5 text-sm font-semibold disabled:opacity-60"
+                        :disabled="loading || !data.rows.length"
+                        @click="exportCsv"
+                    >
+                        Exportar
+                    </button>
+                </form>
+            </div>
+
+            <div v-if="catalogError" class="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                {{ catalogError }}
+            </div>
+
+            <div v-if="error" class="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {{ error }}
+            </div>
+
+            <div class="mt-6 grid gap-4 sm:grid-cols-3">
+                <div v-for="card in summaryCards" :key="card.label" class="app-surface rounded-lg border p-5">
+                    <p class="app-muted text-xs font-semibold uppercase">{{ card.label }}</p>
+                    <p class="app-text mt-2 text-2xl font-semibold">{{ card.value }}</p>
+                </div>
+            </div>
+
+            <div class="app-surface mt-6 rounded-lg border p-4">
+                <div v-if="loading" class="app-muted px-4 py-8 text-center text-sm">
+                    Cargando articulos pendientes por pedido...
+                </div>
+
+                <DataTable
+                    v-else
+                    :key="tableKey"
+                    :data="rows"
+                    :columns="columns"
+                    :options="options"
+                    class="display stj-data-table w-full"
+                />
+            </div>
+        </section>
+    </AdminLayout>
+</template>
+
+<style>
+.stj-link {
+    color: var(--stj-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.stj-link:hover {
+    text-decoration: underline;
+}
+
+.stj-pending-thumb {
+    display: block;
+    height: 96px;
+    object-fit: contain;
+    width: 96px;
+}
+</style>

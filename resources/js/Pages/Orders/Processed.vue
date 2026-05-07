@@ -4,7 +4,6 @@ import DataTable from 'datatables.net-vue3';
 import DataTablesCore from 'datatables.net-dt';
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminLayout from '../../Layouts/AdminLayout.vue';
-import { printOrderReceipt } from '../../Support/orderReceipt';
 
 DataTable.use(DataTablesCore);
 
@@ -181,7 +180,7 @@ function submitFilters() {
     loadPage();
 }
 
-async function handleTableClick(event) {
+function handleTableClick(event) {
     const button = event.target.closest('[data-order-pdf]');
 
     if (!button) {
@@ -189,7 +188,12 @@ async function handleTableClick(event) {
     }
 
     event.preventDefault();
-    await printOrderReceipt(button.getAttribute('data-country'), button.getAttribute('data-order-pdf'));
+    const params = new URLSearchParams({
+        country: button.getAttribute('data-country'),
+        reference: button.getAttribute('data-order-pdf'),
+    });
+
+    window.location.href = `/dashboard-api/orders/processed-pdf?${params.toString()}`;
 }
 
 function activeCountry() {

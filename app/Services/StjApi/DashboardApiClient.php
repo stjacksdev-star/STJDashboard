@@ -267,6 +267,172 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
+    public function storeReportCatalog(?string $country = null): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/store/catalog', array_filter([
+                'country' => $country,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function storeVirtualCut(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/store/virtual-cut', array_filter([
+                'country' => $filters['country'] ?? null,
+                'store' => $filters['store'] ?? null,
+                'date' => $filters['date'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function storePendingItems(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/store/pending-items', array_filter([
+                'country' => $filters['country'] ?? null,
+                'store' => $filters['store'] ?? null,
+                'type' => $filters['type'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function storePendingItemsByOrder(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/store/pending-items-by-order', array_filter([
+                'country' => $filters['country'] ?? null,
+                'store' => $filters['store'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function accounting3Count(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/accounting/3/count', array_filter([
+                'country' => $filters['country'] ?? null,
+                'store' => $filters['store'] ?? null,
+                'paymentType' => $filters['paymentType'] ?? null,
+                'status' => $filters['status'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     *
+     * @throws RequestException
+     */
+    public function accounting3Export(array $filters): \Illuminate\Http\Client\Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(max(300, (int) config('stj.api.timeout')))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->get('/dashboard/reports/accounting/3/export', array_filter([
+                'country' => $filters['country'] ?? null,
+                'store' => $filters['store'] ?? null,
+                'paymentType' => $filters['paymentType'] ?? null,
+                'status' => $filters['status'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response;
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function accountingSalesByStore(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/accounting/sales-by-store', array_filter([
+                'country' => $filters['country'] ?? null,
+                'store' => $filters['store'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
     public function validateOrderProduct(string $country, string $sku, ?string $size = null): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))

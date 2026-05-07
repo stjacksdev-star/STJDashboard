@@ -231,56 +231,24 @@ function handlePdf(id) {
         return;
     }
 
-    printRefund(refund);
+    downloadRefundPdf(refund);
 }
 
-function printRefund(refund) {
-    const html = `<!doctype html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Comprobante devolucion ${escapeHtml(refund.ref)}</title>
-            <style>
-                body { font-family: Arial, sans-serif; color: #111827; margin: 32px; }
-                .header { border-bottom: 2px solid #1d4ed8; margin-bottom: 24px; padding-bottom: 16px; }
-                h1 { font-size: 24px; margin: 0; }
-                .muted { color: #6b7280; font-size: 12px; text-transform: uppercase; }
-                table { border-collapse: collapse; margin-top: 16px; width: 100%; }
-                td, th { border: 1px solid #d1d5db; padding: 10px; text-align: left; vertical-align: top; }
-                th { background: #f3f4f6; width: 32%; }
-                pre { white-space: pre-wrap; word-break: break-word; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <p class="muted">St. Jack's Admin</p>
-                <h1>Comprobante de devolucion</h1>
-            </div>
-            <table>
-                <tr><th>Referencia</th><td>${escapeHtml(refund.ref)}</td></tr>
-                <tr><th>Cliente</th><td>${escapeHtml(refund.customer)}</td></tr>
-                <tr><th>Email</th><td>${escapeHtml(refund.email)}</td></tr>
-                <tr><th>Estado devolucion</th><td>${escapeHtml(refund.refundLabel)}</td></tr>
-                <tr><th>Fecha devolucion</th><td>${escapeHtml(formatDateTime(refund.refundAt))}</td></tr>
-                <tr><th>Monto devolucion</th><td>${escapeHtml(formatMoney(refund.refundAmount))}</td></tr>
-                <tr><th>Tienda</th><td>${escapeHtml(refund.storeName || refund.storeCode || 'N/D')}</td></tr>
-                <tr><th>Aprobado</th><td>SI</td></tr>
-            </table>
-            <h2>Respuesta servicio</h2>
-            <pre>${escapeHtml(refund.serviceRaw || '')}</pre>
-        </body>
-        </html>`;
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
+function downloadRefundPdf(refund) {
+    const params = new URLSearchParams({
+        country: activeCountry(),
+        status: 'SI',
+        startDate: filters.value.startDate,
+        endDate: filters.value.endDate,
+    });
 
-    if (!printWindow) {
-        return;
+    const store = activeStore();
+
+    if (store) {
+        params.set('store', store);
     }
 
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    window.location.href = `/dashboard-api/orders/refunds/${encodeURIComponent(refund.id)}/pdf?${params.toString()}`;
 }
 
 function actionsHtml(refund) {

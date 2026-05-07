@@ -33,7 +33,18 @@ const iconPaths = {
     users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
 };
 
-const isActive = (href) => (href === '/' ? page.url === '/' : page.url.startsWith(href));
+const normalizedPath = (value) => {
+    const path = String(value || '').split(/[?#]/)[0].replace(/\/+$/, '');
+
+    return path === '' ? '/' : path;
+};
+
+const isActive = (href) => {
+    const current = normalizedPath(page.url);
+    const target = normalizedPath(href);
+
+    return target === '/' ? current === '/' : current === target || current.startsWith(`${target}/`);
+};
 const groupIsActive = (item) => item.children?.some((child) => isActive(child.href));
 const iconPath = (name) => iconPaths[name] || iconPaths.dot;
 
