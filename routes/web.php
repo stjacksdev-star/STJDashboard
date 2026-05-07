@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Dashboard\AccountingReportController;
+use App\Http\Controllers\Dashboard\AppointmentController;
 use App\Http\Controllers\Dashboard\CollectionController;
 use App\Http\Controllers\Dashboard\OrderController;
 use App\Http\Controllers\Dashboard\PromotionController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Dashboard\ProductCountryController;
 use App\Http\Controllers\Dashboard\ProductMasterController;
 use App\Http\Controllers\Dashboard\SalesController;
 use App\Http\Controllers\Dashboard\StoreReportController;
+use App\Http\Controllers\Dashboard\SubscriberController;
 use App\Http\Middleware\EnsureCasAuthenticated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -84,8 +86,32 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.sales.conversion');
     Route::get('/dashboard-api/sales/visits', [SalesController::class, 'visits'])
         ->name('dashboard-api.sales.visits');
+    Route::get('/dashboard-api/sales/satisfaction', [SalesController::class, 'satisfaction'])
+        ->name('dashboard-api.sales.satisfaction');
+    Route::get('/dashboard-api/sales/categories', [SalesController::class, 'categories'])
+        ->name('dashboard-api.sales.categories');
+    Route::get('/dashboard-api/sales/segments', [SalesController::class, 'segments'])
+        ->name('dashboard-api.sales.segments');
+    Route::get('/dashboard-api/sales/payment-forms', [SalesController::class, 'paymentForms'])
+        ->name('dashboard-api.sales.payment-forms');
+    Route::get('/dashboard-api/sales/geographic', [SalesController::class, 'geographic'])
+        ->name('dashboard-api.sales.geographic');
+    Route::get('/dashboard-api/sales/app', [SalesController::class, 'app'])
+        ->name('dashboard-api.sales.app');
     Route::get('/dashboard-api/sales/orders', [SalesController::class, 'orders'])
         ->name('dashboard-api.sales.orders');
+    Route::get('/dashboard-api/appointments/catalog', [AppointmentController::class, 'catalog'])
+        ->name('dashboard-api.appointments.catalog');
+    Route::get('/dashboard-api/appointments', [AppointmentController::class, 'index'])
+        ->name('dashboard-api.appointments.index');
+    Route::get('/dashboard-api/subscribers', [SubscriberController::class, 'index'])
+        ->name('dashboard-api.subscribers.index');
+    Route::post('/dashboard-api/subscribers', [SubscriberController::class, 'store'])
+        ->name('dashboard-api.subscribers.store');
+    Route::post('/dashboard-api/subscribers/{subscriber}', [SubscriberController::class, 'update'])
+        ->name('dashboard-api.subscribers.update');
+    Route::delete('/dashboard-api/subscribers/{subscriber}', [SubscriberController::class, 'destroy'])
+        ->name('dashboard-api.subscribers.destroy');
     Route::get('/dashboard-api/orders/reference', [OrderController::class, 'showByReference'])
         ->name('dashboard-api.orders.reference');
     Route::get('/dashboard-api/orders/search', [OrderController::class, 'search'])
@@ -137,6 +163,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('products.country');
     Route::get('/venta', fn () => Inertia::render('Sales/Index'))
         ->name('sales.index');
+    Route::get('/citas', fn () => Inertia::render('Appointments/Index'))
+        ->name('appointments.index');
     Route::get('/pedidos/pendientes', fn () => Inertia::render('Orders/Pending'))
         ->name('orders.pending');
     Route::get('/pedidos/procesados', fn () => Inertia::render('Orders/Processed'))
@@ -159,14 +187,14 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('reports.accounting.3');
     Route::get('/reportes/contabilidad/venta-general', fn () => Inertia::render('Reports/AccountingSalesByStore'))
         ->name('reports.accounting.sales-by-store');
+    Route::get('/reportes/suscriptores', fn () => Inertia::render('Reports/Subscribers'))
+        ->name('reports.subscribers');
 
     foreach ([
-        '/citas' => 'Citas',
         '/cupones/mantenimiento' => 'Cupones / Mantenimiento',
         '/cupones/reportes' => 'Cupones / Reportes',
         '/pedidos/gestiones' => 'Pedidos / Gestiones',
         '/reportes/catalogo' => 'Reportes / Catalogo',
-        '/reportes/suscriptores' => 'Reportes / Suscriptores',
         '/reportes/im/venta' => 'Reportes / IM Venta',
         '/reportes/contabilidad/venta-general-2' => 'Reportes / Contabilidad 2',
         '/configuracion/log' => 'Configuracion / LOG',
