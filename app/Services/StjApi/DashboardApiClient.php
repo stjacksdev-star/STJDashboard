@@ -1336,4 +1336,88 @@ class DashboardApiClient
 
         return $response->json('data') ?? [];
     }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function claims(array $filters = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/claims', array_filter([
+                'search' => $filters['search'] ?? null,
+                'status' => $filters['status'] ?? null,
+                'type' => $filters['type'] ?? null,
+                'limit' => 500,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function createClaim(array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/claims', [
+                ...$data,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function updateClaim(int $claim, array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post("/dashboard/claims/{$claim}", [
+                ...$data,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public function deleteClaim(int $claim): void
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->delete("/dashboard/claims/{$claim}");
+
+        $response->throw();
+    }
 }

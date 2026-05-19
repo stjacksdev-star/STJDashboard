@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Dashboard\AccountingReportController;
 use App\Http\Controllers\Dashboard\AppointmentController;
+use App\Http\Controllers\Dashboard\ClaimController;
 use App\Http\Controllers\Dashboard\CollectionController;
 use App\Http\Controllers\Dashboard\OrderController;
 use App\Http\Controllers\Dashboard\PromotionController;
@@ -104,6 +105,14 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.appointments.catalog');
     Route::get('/dashboard-api/appointments', [AppointmentController::class, 'index'])
         ->name('dashboard-api.appointments.index');
+    Route::get('/dashboard-api/claims', [ClaimController::class, 'index'])
+        ->name('dashboard-api.claims.index');
+    Route::post('/dashboard-api/claims', [ClaimController::class, 'store'])
+        ->name('dashboard-api.claims.store');
+    Route::post('/dashboard-api/claims/{claim}', [ClaimController::class, 'update'])
+        ->name('dashboard-api.claims.update');
+    Route::delete('/dashboard-api/claims/{claim}', [ClaimController::class, 'destroy'])
+        ->name('dashboard-api.claims.destroy');
     Route::get('/dashboard-api/subscribers', [SubscriberController::class, 'index'])
         ->name('dashboard-api.subscribers.index');
     Route::post('/dashboard-api/subscribers', [SubscriberController::class, 'store'])
@@ -171,6 +180,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('orders.processed');
     Route::get('/pedidos/devoluciones', fn () => Inertia::render('Orders/Refunds'))
         ->name('orders.refunds');
+    Route::get('/pedidos/reclamos', fn () => Inertia::render('Orders/Claims'))
+        ->name('orders.claims');
     Route::get('/pedidos/busqueda', fn () => Inertia::render('Orders/Search'))
         ->name('orders.search');
     Route::get('/pedidos/consulta', fn (Request $request) => Inertia::render('Orders/Reference', [
