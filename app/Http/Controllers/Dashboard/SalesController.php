@@ -47,6 +47,36 @@ class SalesController extends Controller
         }
     }
 
+    public function catalog(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        $validated = $request->validate([
+            'country' => ['nullable', 'string', 'max:3'],
+        ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+        $country = $validated['country'] ?? null;
+
+        if (filled($country) && ! $countryAccess->canAccessCountry($user, $country)) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            $data = $api->salesCatalog($country);
+            $data['countries'] = $countryAccess->filterCountries($user, $data['countries'] ?? []);
+
+            return response()->json([
+                'ok' => true,
+                'data' => $data,
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible obtener el catalogo de ventas desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     public function regionalChart(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([

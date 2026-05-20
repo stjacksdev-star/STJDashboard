@@ -82,6 +82,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.products.country.deactivate');
     Route::get('/dashboard-api/sales/kpi', [SalesController::class, 'kpi'])
         ->name('dashboard-api.sales.kpi');
+    Route::get('/dashboard-api/sales/catalog', [SalesController::class, 'catalog'])
+        ->name('dashboard-api.sales.catalog');
     Route::get('/dashboard-api/sales/regional-chart', [SalesController::class, 'regionalChart'])
         ->name('dashboard-api.sales.regional-chart');
     Route::get('/dashboard-api/sales/conversion', [SalesController::class, 'conversion'])

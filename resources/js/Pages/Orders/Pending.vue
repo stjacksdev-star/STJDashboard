@@ -9,7 +9,7 @@ import { printOrderReceipt } from '../../Support/orderReceipt';
 DataTable.use(DataTablesCore);
 
 const page = usePage();
-const loading = ref(true);
+const loading = ref(false);
 const error = ref('');
 const summaryError = ref('');
 const data = ref(emptyData());
@@ -134,11 +134,9 @@ async function fetchStoreSummary() {
     summaryError.value = '';
 
     try {
-        const response = await window.axios.get('/dashboard-api/sales/kpi', {
+        const response = await window.axios.get('/dashboard-api/sales/catalog', {
             params: {
                 country: activeCountry(),
-                startDate: filters.value.date,
-                endDate: filters.value.date,
             },
         });
 
@@ -161,11 +159,10 @@ async function fetchStoreSummary() {
 
 async function loadPage() {
     await fetchStoreSummary();
-    await fetchPendingOrders();
 }
 
 function submitFilters() {
-    loadPage();
+    fetchPendingOrders();
 }
 
 async function handleTableClick(event) {

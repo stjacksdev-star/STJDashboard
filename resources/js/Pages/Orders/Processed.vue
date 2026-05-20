@@ -20,7 +20,7 @@ const processedStatuses = [
 ];
 
 const page = usePage();
-const loading = ref(true);
+const loading = ref(false);
 const error = ref('');
 const summaryError = ref('');
 const data = ref(emptyData());
@@ -146,11 +146,9 @@ async function fetchCountries() {
     summaryError.value = '';
 
     try {
-        const response = await window.axios.get('/dashboard-api/sales/kpi', {
+        const response = await window.axios.get('/dashboard-api/sales/catalog', {
             params: {
                 country: activeCountry(),
-                startDate: filters.value.startDate,
-                endDate: filters.value.endDate,
             },
         });
 
@@ -173,11 +171,10 @@ async function fetchCountries() {
 
 async function loadPage() {
     await fetchCountries();
-    await fetchProcessedOrders();
 }
 
 function submitFilters() {
-    loadPage();
+    fetchProcessedOrders();
 }
 
 function handleTableClick(event) {

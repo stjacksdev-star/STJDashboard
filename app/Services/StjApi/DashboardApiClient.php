@@ -78,6 +78,26 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
+    public function salesCatalog(?string $country = null): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/sales/catalog', array_filter([
+                'country' => $country,
+            ], fn ($value) => $value !== null && $value !== ''));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
     public function regionalSalesChart(?string $startDate = null, ?string $endDate = null): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))

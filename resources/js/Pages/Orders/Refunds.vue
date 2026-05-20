@@ -8,7 +8,7 @@ import AdminLayout from '../../Layouts/AdminLayout.vue';
 DataTable.use(DataTablesCore);
 
 const page = usePage();
-const loading = ref(true);
+const loading = ref(false);
 const error = ref('');
 const summaryError = ref('');
 const data = ref(emptyData());
@@ -113,11 +113,9 @@ async function fetchCatalog() {
     summaryError.value = '';
 
     try {
-        const response = await window.axios.get('/dashboard-api/sales/kpi', {
+        const response = await window.axios.get('/dashboard-api/sales/catalog', {
             params: {
                 country: activeCountry(),
-                startDate: filters.value.startDate,
-                endDate: filters.value.endDate,
             },
         });
         const payload = response.data.data || {};
@@ -169,11 +167,10 @@ async function fetchRefunds() {
 
 async function loadPage() {
     await fetchCatalog();
-    await fetchRefunds();
 }
 
 function submitFilters() {
-    loadPage();
+    fetchRefunds();
 }
 
 function activeCountry() {

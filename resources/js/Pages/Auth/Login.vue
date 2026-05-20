@@ -28,14 +28,11 @@ defineProps({
                     </div>
 
                     <div class="mt-20">
-                        <p class="text-sm font-semibold uppercase tracking-[0.22em] text-blue-500">
-                            Dashboard
-                        </p>
-                        <h1 class="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
-                            Administracion e-commerce
+                        <h1 class="text-4xl font-semibold tracking-tight text-slate-950">
+                            Mas velocidad. Mas control. Misma esencia ST Jack's.
                         </h1>
                         <p class="mt-5 max-w-sm text-base leading-7 text-slate-500">
-                            Ingresa con tu cuenta corporativa de ST Jack's para continuar al panel administrativo.
+                            El dashboard evoluciona para ofrecer una experiencia moderna, estable y preparada para el crecimiento regional.
                         </p>
 
                         <div
@@ -57,16 +54,8 @@ defineProps({
                         >
                             Iniciar sesion
                         </a>
-
-                        <p class="mt-5 text-sm leading-6 text-slate-500">
-                            La sesion sera validada con CAS y el token quedara protegido en la sesion del dashboard.
-                        </p>
                     </div>
                 </div>
-
-                <p class="mt-12 text-xs text-slate-400">
-                    STJ Dashboard usa stj-api para consultar los datos administrativos.
-                </p>
             </div>
 
             <div class="relative hidden overflow-hidden bg-blue-600 lg:block">
@@ -77,23 +66,27 @@ defineProps({
                             Nuevo panel
                         </p>
                         <h2 class="mt-4 text-5xl font-semibold leading-tight tracking-tight">
-                            Flujo moderno, misma autenticacion por token.
+                            Operacion regional en un solo lugar.
                         </h2>
                         <p class="mt-6 max-w-xl text-lg leading-8 text-blue-50">
-                            El dashboard conserva el acceso con CAS, pero se prepara para operar sin MySQL local y consumir la informacion desde stj-api.
+                            Informacion clara para tomar decisiones, dar seguimiento y mantener el control de la operacion.
                         </p>
-                        <div class="mt-10 grid max-w-xl grid-cols-3 gap-3">
+                        <div class="mt-10 grid max-w-xl grid-cols-2 gap-3">
                             <div class="rounded-lg bg-white/14 p-4 ring-1 ring-white/20">
-                                <p class="text-xs uppercase tracking-[0.18em] text-blue-100">Auth</p>
-                                <p class="mt-2 text-lg font-semibold">CAS</p>
+                                <p class="text-3xl">📊</p>
+                                <p class="mt-3 text-lg font-semibold">Ventas</p>
                             </div>
                             <div class="rounded-lg bg-white/14 p-4 ring-1 ring-white/20">
-                                <p class="text-xs uppercase tracking-[0.18em] text-blue-100">UI</p>
-                                <p class="mt-2 text-lg font-semibold">Inertia</p>
+                                <p class="text-3xl">📦</p>
+                                <p class="mt-3 text-lg font-semibold">Inventario</p>
                             </div>
                             <div class="rounded-lg bg-white/14 p-4 ring-1 ring-white/20">
-                                <p class="text-xs uppercase tracking-[0.18em] text-blue-100">Datos</p>
-                                <p class="mt-2 text-lg font-semibold">API</p>
+                                <p class="text-3xl">🌎</p>
+                                <p class="mt-3 text-lg font-semibold">Regional</p>
+                            </div>
+                            <div class="rounded-lg bg-white/14 p-4 ring-1 ring-white/20">
+                                <p class="text-3xl">⚡</p>
+                                <p class="mt-3 text-lg font-semibold">Tiempo real</p>
                             </div>
                         </div>
                     </div>
