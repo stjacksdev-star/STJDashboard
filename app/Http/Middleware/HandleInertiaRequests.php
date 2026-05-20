@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\StoreProfileService;
+use App\Services\UserCountryAccessService;
 use App\Support\DashboardAccess;
 use App\Support\DashboardMenu;
 use Illuminate\Http\Request;
@@ -26,6 +27,9 @@ class HandleInertiaRequests extends Middleware
             $request->session()->put('stj.user', $user);
         }
 
+        $countryAccess = app(UserCountryAccessService::class);
+        $allowedCountries = $countryAccess->allowedCountries((array) $user);
+
         return [
             ...parent::share($request),
             'appName' => config('app.name'),
@@ -34,6 +38,10 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 'expiresAt' => $request->session()->get('stj.expires_at'),
                 'permissions' => DashboardAccess::permissions($user),
+                'countries' => [
+                    'allowed' => $allowedCountries,
+                    'default' => collect($allowedCountries)->first(fn (array $country) => (bool) ($country['isDefault'] ?? false)),
+                ],
             ],
             'navigation' => DashboardMenu::forUser($user),
         ];

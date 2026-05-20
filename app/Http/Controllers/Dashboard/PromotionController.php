@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Services\StjApi\DashboardApiClient;
+use App\Services\UserCountryAccessService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,15 +12,25 @@ use Illuminate\Validation\Rule;
 
 class PromotionController extends Controller
 {
-    public function index(Request $request, DashboardApiClient $api): JsonResponse
+    public function index(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
+        $user = (array) $request->session()->get('stj.user', []);
+        $country = $request->string('country')->toString();
+
+        if (filled($country) && ! $countryAccess->canAccessCountry($user, $country)) {
+            return $this->countryForbidden();
+        }
+
         try {
+            $data = $api->promotions(
+                $country,
+                $request->string('status')->toString(),
+            );
+            $data = $this->restrictPromotionPayload($data, $user, $countryAccess);
+
             return response()->json([
                 'ok' => true,
-                'data' => $api->promotions(
-                    $request->string('country')->toString(),
-                    $request->string('status')->toString(),
-                ),
+                'data' => $data,
             ]);
         } catch (RequestException $exception) {
             return response()->json([
@@ -29,7 +40,7 @@ class PromotionController extends Controller
         }
     }
 
-    public function store(Request $request, DashboardApiClient $api): JsonResponse
+    public function store(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([
             'country' => ['required', 'string', 'max:3'],
@@ -37,15 +48,21 @@ class PromotionController extends Controller
             'commercialName' => ['nullable', 'string', 'max:255'],
             'origin' => ['required', Rule::in(['TODO', 'WEB', 'APP'])],
             'checkoutType' => ['nullable', Rule::in(['TODO', 'D', 'T'])],
-            'type' => ['required', Rule::in(['TODO', 'CATEGORIA', 'SUB-CATEGORIA', 'SKU', 'TARJETA', 'ENTREGA'])],
-            'promotionType' => ['required', Rule::in(['DESCUENTO', 'DESCUENTO-SKU', 'PUNTO-PRECIO', 'CONDICION-SKU', 'CONDICION-ENTREGA', 'CONDICION-PAGO'])],
-            'restriction' => ['nullable', Rule::in(['TOTAL_COMPRA', '21/2', '2x1', '3x2', '2doPrecio', 'TARJETA', 'ENTREGA', '2xPP'])],
+            'type' => ['required', Rule::in(['TODO', 'SKU'])],
+            'promotionType' => ['required', Rule::in(['DESCUENTO', 'CONDICION-SKU', 'PUNTO-PRECIO', 'DESCUENTO-SKU'])],
+            'restriction' => ['nullable', Rule::in(['21/2', '2x1', '2doPrecio', '2xPP'])],
             'price' => ['nullable', 'numeric', 'min:0'],
             'percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'startAt' => ['required', 'date'],
             'endAt' => ['required', 'date', 'after:startAt'],
             'products' => ['nullable', 'file', 'max:5120'],
         ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
@@ -62,8 +79,43 @@ class PromotionController extends Controller
         }
     }
 
-    public function updateSchedule(Request $request, int $promotion, DashboardApiClient $api): JsonResponse
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function restrictPromotionPayload(array $data, array $user, UserCountryAccessService $countryAccess): array
     {
+        $allowedIds = $countryAccess->allowedCountryIds($user);
+        $allowedCodes = $countryAccess->allowedCountryCodes($user);
+        $data['countries'] = $countryAccess->filterCountries($user, $data['countries'] ?? []);
+        $data['promotions'] = collect($data['promotions'] ?? [])
+            ->filter(function (array $promotion) use ($allowedIds, $allowedCodes) {
+                $country = $promotion['country'] ?? [];
+                $id = (int) ($country['id'] ?? 0);
+                $code = strtoupper((string) ($country['code'] ?? ''));
+
+                return in_array($id, $allowedIds, true) || in_array($code, $allowedCodes, true);
+            })
+            ->values()
+            ->all();
+
+        return $data;
+    }
+
+    private function countryForbidden(): JsonResponse
+    {
+        return response()->json([
+            'ok' => false,
+            'message' => 'No tiene permiso para operar promociones de este pais.',
+        ], 403);
+    }
+
+    public function updateSchedule(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
+            return $this->countryForbidden();
+        }
+
         $validated = $request->validate([
             'commercialName' => ['nullable', 'string', 'max:255'],
             'startAt' => ['nullable', 'date'],
@@ -85,8 +137,12 @@ class PromotionController extends Controller
         }
     }
 
-    public function assets(int $promotion, DashboardApiClient $api): JsonResponse
+    public function assets(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
+        if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
+            return $this->countryForbidden();
+        }
+
         try {
             return response()->json([
                 'ok' => true,
@@ -100,8 +156,12 @@ class PromotionController extends Controller
         }
     }
 
-    public function storeAsset(Request $request, int $promotion, DashboardApiClient $api): JsonResponse
+    public function storeAsset(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
+        if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
+            return $this->countryForbidden();
+        }
+
         $validated = $request->validate($this->assetRules(imageRequired: true));
 
         try {
@@ -185,8 +245,12 @@ class PromotionController extends Controller
         ];
     }
 
-    public function updateHeader(Request $request, int $promotion, DashboardApiClient $api): JsonResponse
+    public function updateHeader(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
+        if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
+            return $this->countryForbidden();
+        }
+
         $request->validate([
             'header' => ['required', 'image', 'max:5120'],
         ]);
@@ -204,5 +268,25 @@ class PromotionController extends Controller
                 'errors' => $exception->response?->json('errors') ?: [],
             ], $exception->response?->status() ?: 502);
         }
+    }
+
+    private function canAccessPromotion(DashboardApiClient $api, UserCountryAccessService $countryAccess, array $user, int $promotion): bool
+    {
+        try {
+            $data = $api->promotions(null, null);
+        } catch (RequestException) {
+            return false;
+        }
+
+        return collect($data['promotions'] ?? [])
+            ->contains(function (array $item) use ($promotion, $countryAccess, $user) {
+                if ((int) ($item['id'] ?? 0) !== $promotion) {
+                    return false;
+                }
+
+                $country = $item['country'] ?? [];
+
+                return $countryAccess->canAccessCountry($user, $country['id'] ?? $country['code'] ?? null);
+            });
     }
 }

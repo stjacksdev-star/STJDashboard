@@ -13,6 +13,7 @@ use App\Http\Controllers\Dashboard\ProductMasterController;
 use App\Http\Controllers\Dashboard\SalesController;
 use App\Http\Controllers\Dashboard\StoreReportController;
 use App\Http\Controllers\Dashboard\SubscriberController;
+use App\Http\Controllers\Dashboard\UserCountryAccessController;
 use App\Http\Middleware\EnsureCasAuthenticated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -121,6 +122,14 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.subscribers.update');
     Route::delete('/dashboard-api/subscribers/{subscriber}', [SubscriberController::class, 'destroy'])
         ->name('dashboard-api.subscribers.destroy');
+    Route::get('/dashboard-api/user-country-access', [UserCountryAccessController::class, 'index'])
+        ->name('dashboard-api.user-country-access.index');
+    Route::get('/dashboard-api/user-country-access/users', [UserCountryAccessController::class, 'users'])
+        ->name('dashboard-api.user-country-access.users');
+    Route::post('/dashboard-api/user-country-access', [UserCountryAccessController::class, 'store'])
+        ->name('dashboard-api.user-country-access.store');
+    Route::delete('/dashboard-api/user-country-access/{assignment}', [UserCountryAccessController::class, 'destroy'])
+        ->name('dashboard-api.user-country-access.destroy');
     Route::get('/dashboard-api/orders/reference', [OrderController::class, 'showByReference'])
         ->name('dashboard-api.orders.reference');
     Route::get('/dashboard-api/orders/search', [OrderController::class, 'search'])
@@ -200,6 +209,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('reports.accounting.sales-by-store');
     Route::get('/reportes/suscriptores', fn () => Inertia::render('Reports/Subscribers'))
         ->name('reports.subscribers');
+    Route::get('/configuracion/usuarios-paises', fn () => Inertia::render('Settings/UserCountryAccess'))
+        ->name('settings.user-country-access');
 
     foreach ([
         '/cupones/mantenimiento' => 'Cupones / Mantenimiento',

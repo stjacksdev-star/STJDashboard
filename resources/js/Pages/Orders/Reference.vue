@@ -91,6 +91,26 @@ const processDifference = computed(() => roundMoney(order.value?.totals?.paidDif
 const paymentIsCard = computed(() => String(order.value?.payment?.type || '').toUpperCase() === 'TARJETA');
 const processRefund = computed(() => paymentIsCard.value ? Math.max(0, -processDifference.value) : 0);
 const processCharge = computed(() => Math.max(0, processDifference.value));
+const editingProduct = computed(() =>
+    products.value.find((product) => Number(product.id) === Number(editingLineId.value)) || null,
+);
+const lineEditProjectedDifference = computed(() => {
+    if (!editingProduct.value || !order.value) {
+        return 0;
+    }
+
+    const validationProduct = productValidation.value?.ok ? productValidation.value.product : null;
+    const price = Number(validationProduct?.price ?? editingProduct.value.price ?? 0);
+    const quantity = Math.max(0, Number(lineForm.value.quantity || 0));
+    const discount = Math.max(0, Math.min(100, Number(lineForm.value.discount || 0)));
+    const currentSubtotal = Number(editingProduct.value.chargedSubtotal || 0);
+    const nextSubtotal = quantity * (price * (1 - (discount / 100)));
+    const currentCalculated = Number(order.value?.totals?.paidCalculated || 0);
+    const paid = Number(order.value?.totals?.paid || 0);
+
+    return roundMoney((currentCalculated - currentSubtotal + nextSubtotal) - paid);
+});
+const cardLineEditIncrease = computed(() => paymentIsCard.value ? Math.max(0, lineEditProjectedDifference.value) : 0);
 const processImpact = computed(() => {
     if (Number(order.value?.totals?.items || 0) === 0) {
         if (!paymentIsCard.value) {
@@ -125,6 +145,14 @@ const processImpact = computed(() => {
     }
 
     if (processCharge.value >= 0.01) {
+        if (paymentIsCard.value) {
+            return {
+                type: 'charge',
+                title: 'Cambio no permitido',
+                message: `El detalle supera el pago aprobado con tarjeta por ${currency.value} ${formatMoney(processCharge.value)}. Ajuste los articulos para que el total baje o se mantenga igual al pago aprobado.`,
+            };
+        }
+
         return {
             type: 'charge',
             title: 'Hay diferencia por cobrar',
@@ -255,6 +283,11 @@ async function validateLineProduct() {
 
 async function saveLineEdit() {
     if (!editingLineId.value) {
+        return;
+    }
+
+    if (cardLineEditIncrease.value >= 0.01) {
+        lineError.value = `No se puede aumentar el monto de un pedido pagado con tarjeta. El detalle quedaria arriba del total aprobado por ${currency.value} ${formatMoney(cardLineEditIncrease.value)}.`;
         return;
     }
 

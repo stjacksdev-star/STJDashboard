@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import DataTable from 'datatables.net-vue3';
 import DataTablesCore from 'datatables.net-dt';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -7,6 +7,7 @@ import AdminLayout from '../../Layouts/AdminLayout.vue';
 
 DataTable.use(DataTablesCore);
 
+const page = usePage();
 const loading = ref(true);
 const error = ref('');
 const selectedCountry = ref('');
@@ -16,9 +17,9 @@ const statuses = ref([]);
 const formOptions = ref({
     origins: ['TODO', 'WEB', 'APP'],
     checkoutTypes: ['TODO', 'D', 'T'],
-    types: ['TODO', 'CATEGORIA', 'SUB-CATEGORIA', 'SKU', 'TARJETA', 'ENTREGA'],
-    promotionTypes: ['DESCUENTO', 'DESCUENTO-SKU', 'PUNTO-PRECIO', 'CONDICION-SKU', 'CONDICION-ENTREGA', 'CONDICION-PAGO'],
-    restrictions: ['TOTAL_COMPRA', '21/2', '2x1', '3x2', '2doPrecio', 'TARJETA', 'ENTREGA', '2xPP'],
+    types: ['TODO', 'SKU'],
+    promotionTypes: ['DESCUENTO', 'CONDICION-SKU', 'PUNTO-PRECIO', 'DESCUENTO-SKU'],
+    restrictions: ['21/2', '2x1', '2doPrecio', '2xPP'],
 });
 const promotions = ref([]);
 const tableKey = ref(0);
@@ -54,6 +55,10 @@ const assetForm = ref(defaultAssetForm());
 const headerForm = ref({
     header: null,
 });
+
+const createTypes = ['TODO', 'SKU'];
+const createPromotionTypes = ['DESCUENTO', 'CONDICION-SKU', 'PUNTO-PRECIO', 'DESCUENTO-SKU'];
+const createRestrictions = ['21/2', '2x1', '2doPrecio', '2xPP'];
 
 const columns = [
     { data: 'id', title: 'ID', width: '70px' },
@@ -101,6 +106,29 @@ const rows = computed(() =>
         actionsLabel: actionsHtml(promotion.id),
     })),
 );
+const availableCreateTypes = computed(() => createTypes.filter((type) => formOptions.value.types.includes(type)));
+const availableCreatePromotionTypes = computed(() =>
+    createPromotionTypes.filter((type) => formOptions.value.promotionTypes.includes(type)),
+);
+const availableCreateRestrictions = computed(() =>
+    createRestrictions.filter((restriction) => formOptions.value.restrictions.includes(restriction)),
+);
+const canEditCreateRestriction = computed(() => createForm.value.promotionType === 'CONDICION-SKU');
+const canEditCreatePrice = computed(() => {
+    if (createForm.value.promotionType === 'PUNTO-PRECIO') {
+        return true;
+    }
+
+    return createForm.value.promotionType === 'CONDICION-SKU'
+        && !['21/2', '2x1'].includes(createForm.value.restriction);
+});
+const canEditCreatePercentage = computed(() => {
+    if (createForm.value.promotionType === 'DESCUENTO-SKU') {
+        return createForm.value.type === 'SKU';
+    }
+
+    return createForm.value.promotionType === 'DESCUENTO' && createForm.value.type === 'TODO';
+});
 
 async function fetchPromotions() {
     loading.value = true;
@@ -172,6 +200,7 @@ function openCreateModal() {
         ...defaultCreateForm(),
         country: selectedCountry.value || '',
     };
+    applyCreatePromotionRules();
     showCreateModal.value = true;
 }
 
@@ -478,8 +507,8 @@ function defaultCreateForm() {
         commercialName: '',
         origin: 'TODO',
         checkoutType: 'TODO',
-        type: 'SKU',
-        promotionType: 'DESCUENTO-SKU',
+        type: 'TODO',
+        promotionType: 'DESCUENTO',
         restriction: '',
         price: '',
         percentage: '',
@@ -487,6 +516,42 @@ function defaultCreateForm() {
         endAt: toDatetimeLocal(end),
         products: null,
     };
+}
+
+function applyCreatePromotionRules() {
+    if (!availableCreateTypes.value.includes(createForm.value.type)) {
+        createForm.value.type = availableCreateTypes.value[0] || 'TODO';
+    }
+
+    if (!availableCreatePromotionTypes.value.includes(createForm.value.promotionType)) {
+        createForm.value.promotionType = availableCreatePromotionTypes.value[0] || 'DESCUENTO';
+    }
+
+    if (!canEditCreateRestriction.value) {
+        createForm.value.restriction = '';
+    } else if (createForm.value.restriction && !availableCreateRestrictions.value.includes(createForm.value.restriction)) {
+        createForm.value.restriction = '';
+    }
+
+    if (createForm.value.restriction === '21/2') {
+        createForm.value.percentage = '50';
+        createForm.value.price = '';
+        return;
+    }
+
+    if (createForm.value.restriction === '2x1') {
+        createForm.value.percentage = '';
+        createForm.value.price = '';
+        return;
+    }
+
+    if (!canEditCreatePrice.value) {
+        createForm.value.price = '';
+    }
+
+    if (!canEditCreatePercentage.value) {
+        createForm.value.percentage = '';
+    }
 }
 
 function defaultAssetForm(promotion = null) {
@@ -559,6 +624,22 @@ const canEditEnd = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(selectedP
 const canEditSchedule = computed(() => canEditStart.value || canEditEnd.value);
 const canEditPromotion = computed(() => selectedPromotion.value?.status !== 'FINALIZADA');
 const canManagePromotionAssets = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(assetPromotion.value?.status));
+const currentUserId = computed(() => page.props.auth?.user?.idUser || page.props.auth?.user?.id || '');
+const activatePromotionUrl = computed(() => legacyPromotionTaskUrl('activarPromocion'));
+const deactivatePromotionUrl = computed(() => legacyPromotionTaskUrl('desactivarPromocion'));
+
+function legacyPromotionTaskUrl(task) {
+    if (!selectedPromotion.value?.id || !currentUserId.value) {
+        return '';
+    }
+
+    const params = new URLSearchParams({
+        id: selectedPromotion.value.id,
+        sesId: currentUserId.value,
+    });
+
+    return `https://stjacks.com/Tareas/${task}?${params.toString()}`;
+}
 
 function statusHtml(status) {
     const normalized = String(status || 'N/D');
@@ -593,6 +674,10 @@ function actionsHtml(id) {
 }
 
 watch([selectedCountry, selectedStatus], fetchPromotions);
+watch(
+    () => [createForm.value.type, createForm.value.promotionType, createForm.value.restriction],
+    applyCreatePromotionRules,
+);
 onMounted(fetchPromotions);
 </script>
 
@@ -761,7 +846,7 @@ onMounted(fetchPromotions);
                                 <label class="block">
                                     <span class="app-muted text-sm font-medium">Tipo</span>
                                     <select v-model="createForm.type" required class="stj-input mt-2">
-                                        <option v-for="type in formOptions.types" :key="type" :value="type">
+                                        <option v-for="type in availableCreateTypes" :key="type" :value="type">
                                             {{ type }}
                                         </option>
                                     </select>
@@ -770,7 +855,7 @@ onMounted(fetchPromotions);
                                 <label class="block">
                                     <span class="app-muted text-sm font-medium">Tipo promocion</span>
                                     <select v-model="createForm.promotionType" required class="stj-input mt-2">
-                                        <option v-for="type in formOptions.promotionTypes" :key="type" :value="type">
+                                        <option v-for="type in availableCreatePromotionTypes" :key="type" :value="type">
                                             {{ type }}
                                         </option>
                                     </select>
@@ -778,9 +863,13 @@ onMounted(fetchPromotions);
 
                                 <label class="block">
                                     <span class="app-muted text-sm font-medium">Restriccion</span>
-                                    <select v-model="createForm.restriction" class="stj-input mt-2">
+                                    <select
+                                        v-model="createForm.restriction"
+                                        :disabled="!canEditCreateRestriction"
+                                        class="stj-input mt-2"
+                                    >
                                         <option value="">Seleccione...</option>
-                                        <option v-for="restriction in formOptions.restrictions" :key="restriction" :value="restriction">
+                                        <option v-for="restriction in availableCreateRestrictions" :key="restriction" :value="restriction">
                                             {{ restriction }}
                                         </option>
                                     </select>
@@ -788,13 +877,28 @@ onMounted(fetchPromotions);
 
                                 <label class="block">
                                     <span class="app-muted text-sm font-medium">Precio</span>
-                                    <input v-model="createForm.price" min="0" step="0.01" class="stj-input mt-2" type="number">
+                                    <input
+                                        v-model="createForm.price"
+                                        :readonly="!canEditCreatePrice"
+                                        min="0"
+                                        step="0.01"
+                                        class="stj-input mt-2"
+                                        type="number"
+                                    >
                                     <span v-if="fieldError('price')" class="stj-field-error">{{ fieldError('price') }}</span>
                                 </label>
 
                                 <label class="block">
                                     <span class="app-muted text-sm font-medium">Descuento</span>
-                                    <input v-model="createForm.percentage" min="0" max="100" step="0.01" class="stj-input mt-2" type="number">
+                                    <input
+                                        v-model="createForm.percentage"
+                                        :readonly="!canEditCreatePercentage"
+                                        min="0"
+                                        max="100"
+                                        step="0.01"
+                                        class="stj-input mt-2"
+                                        type="number"
+                                    >
                                     <span v-if="fieldError('percentage')" class="stj-field-error">{{ fieldError('percentage') }}</span>
                                 </label>
 
@@ -986,24 +1090,47 @@ onMounted(fetchPromotions);
                         </section>
                     </div>
 
-                    <div class="flex items-center justify-end gap-3 border-t px-6 py-4" style="border-color: var(--stj-border);">
-                        <button
-                            type="button"
-                            class="app-muted rounded-md border px-4 py-2 text-sm font-semibold"
-                            style="border-color: var(--stj-border);"
-                            @click="showEditModal = false"
-                        >
-                            Cerrar
-                        </button>
-                        <button
-                            v-if="canEditPromotion"
-                            type="submit"
-                            class="rounded-md px-4 py-2 text-sm font-semibold text-white"
-                            style="background: var(--stj-primary);"
-                            :disabled="editing"
-                        >
-                            {{ editing ? 'Guardando...' : 'Guardar cambios' }}
-                        </button>
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4" style="border-color: var(--stj-border);">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <a
+                                v-if="selectedPromotion.status === 'EN-PROCESO' && deactivatePromotionUrl"
+                                :href="deactivatePromotionUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                            >
+                                Cancelar Promocion ahora
+                            </a>
+                            <a
+                                v-if="selectedPromotion.status === 'PENDIENTE' && activatePromotionUrl"
+                                :href="activatePromotionUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                            >
+                                Activar Promocion ahora
+                            </a>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                class="app-muted rounded-md border px-4 py-2 text-sm font-semibold"
+                                style="border-color: var(--stj-border);"
+                                @click="showEditModal = false"
+                            >
+                                Cerrar
+                            </button>
+                            <button
+                                v-if="canEditPromotion"
+                                type="submit"
+                                class="rounded-md px-4 py-2 text-sm font-semibold text-white"
+                                style="background: var(--stj-primary);"
+                                :disabled="editing"
+                            >
+                                {{ editing ? 'Guardando...' : 'Guardar cambios' }}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Services\StjApi\DashboardApiClient;
+use App\Services\UserCountryAccessService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SalesController extends Controller
 {
-    public function kpi(Request $request, DashboardApiClient $api): JsonResponse
+    public function kpi(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([
             'country' => ['nullable', 'string', 'max:3'],
@@ -18,14 +19,24 @@ class SalesController extends Controller
             'endDate' => ['nullable', 'date'],
         ]);
 
+        $user = (array) $request->session()->get('stj.user', []);
+        $country = $validated['country'] ?? null;
+
+        if (filled($country) && ! $countryAccess->canAccessCountry($user, $country)) {
+            return $this->countryForbidden();
+        }
+
         try {
+            $data = $api->salesKpi(
+                $country,
+                $validated['startDate'] ?? null,
+                $validated['endDate'] ?? null,
+            );
+            $data['countries'] = $countryAccess->filterCountries($user, $data['countries'] ?? []);
+
             return response()->json([
                 'ok' => true,
-                'data' => $api->salesKpi(
-                    $validated['country'] ?? null,
-                    $validated['startDate'] ?? null,
-                    $validated['endDate'] ?? null,
-                ),
+                'data' => $data,
             ]);
         } catch (RequestException $exception) {
             return response()->json([
@@ -36,20 +47,24 @@ class SalesController extends Controller
         }
     }
 
-    public function regionalChart(Request $request, DashboardApiClient $api): JsonResponse
+    public function regionalChart(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([
             'startDate' => ['nullable', 'date'],
             'endDate' => ['nullable', 'date'],
         ]);
 
+        $user = (array) $request->session()->get('stj.user', []);
+
         try {
+            $data = $api->regionalSalesChart(
+                $validated['startDate'] ?? null,
+                $validated['endDate'] ?? null,
+            );
+
             return response()->json([
                 'ok' => true,
-                'data' => $api->regionalSalesChart(
-                    $validated['startDate'] ?? null,
-                    $validated['endDate'] ?? null,
-                ),
+                'data' => $this->filterRegionalChart($countryAccess->allowedCountryIds($user), $data),
             ]);
         } catch (RequestException $exception) {
             return response()->json([
@@ -218,7 +233,7 @@ class SalesController extends Controller
         }
     }
 
-    public function orders(Request $request, DashboardApiClient $api): JsonResponse
+    public function orders(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if ($request->has('pending')) {
             $request->merge([
@@ -237,6 +252,10 @@ class SalesController extends Controller
             'store' => ['nullable', 'string', 'max:20'],
         ]);
 
+        if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
         try {
             return response()->json([
                 'ok' => true,
@@ -249,5 +268,35 @@ class SalesController extends Controller
                 'errors' => $exception->response?->json('errors') ?: [],
             ], $exception->response?->status() ?: 502);
         }
+    }
+
+    private function countryForbidden(): JsonResponse
+    {
+        return response()->json([
+            'ok' => false,
+            'message' => 'No tiene permiso para consultar ventas de este pais.',
+        ], 403);
+    }
+
+    private function filterRegionalChart(array $allowedCountryIds, array $data): array
+    {
+        $allowedCountryIds = array_values(array_unique(array_map('intval', $allowedCountryIds)));
+        $regionalCountryIds = [1, 2, 3, 7];
+        $canSeeConsolidated = empty(array_diff($regionalCountryIds, $allowedCountryIds));
+
+        $data['series'] = collect($data['series'] ?? [])
+            ->filter(function (array $serie) use ($allowedCountryIds, $canSeeConsolidated) {
+                $countryId = (int) ($serie['countryId'] ?? 0);
+
+                if ($countryId === 0) {
+                    return $canSeeConsolidated;
+                }
+
+                return in_array($countryId, $allowedCountryIds, true);
+            })
+            ->values()
+            ->all();
+
+        return $data;
     }
 }

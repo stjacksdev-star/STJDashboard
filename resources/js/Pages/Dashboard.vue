@@ -1,8 +1,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import AdminLayout from '../Layouts/AdminLayout.vue';
 
+const page = usePage();
 const today = new Date();
 const sevenDaysAgo = new Date(today);
 sevenDaysAgo.setDate(today.getDate() - 7);
@@ -150,7 +151,7 @@ const appFilters = ref({
     year: today.getFullYear(),
 });
 
-const countries = [
+const baseCountries = [
     { id: '0', label: 'Todos' },
     { id: '1', label: 'El Salvador' },
     { id: '2', label: 'Guatemala' },
@@ -158,6 +159,34 @@ const countries = [
     { id: '7', label: 'Honduras' },
     { id: '4', label: 'Consolidado' },
 ];
+
+const dashboardCountryIds = [1, 2, 3, 7];
+const allowedCountryIds = computed(() =>
+    (page.props.auth?.countries?.allowed || [])
+        .map((country) => Number(country.id ?? country.countryId ?? country.country_id))
+        .filter((countryId) => dashboardCountryIds.includes(countryId)),
+);
+const canSeeAllDashboardCountries = computed(() =>
+    dashboardCountryIds.every((countryId) => allowedCountryIds.value.includes(countryId)),
+);
+const countries = computed(() => baseCountries.filter((country) => {
+    if (country.id === '0') {
+        return allowedCountryIds.value.length > 1;
+    }
+
+    if (country.id === '4') {
+        return canSeeAllDashboardCountries.value;
+    }
+
+    return allowedCountryIds.value.includes(Number(country.id));
+}));
+const ensureValidSalesCountry = () => {
+    if (countries.value.some((country) => country.id === filters.value.country)) {
+        return;
+    }
+
+    filters.value.country = countries.value[0]?.id || '';
+};
 
 const tabs = [
     { id: 'sales', label: 'Venta' },
@@ -597,7 +626,12 @@ watch(activeVisitsTab, () => {
     }
 });
 
-onMounted(loadChart);
+watch(countries, ensureValidSalesCountry);
+
+onMounted(() => {
+    ensureValidSalesCountry();
+    loadChart();
+});
 </script>
 
 <template>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Services\StjApi\DashboardApiClient;
+use App\Services\UserCountryAccessService;
 use App\Support\DashboardAccess;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -14,7 +15,7 @@ use Illuminate\Http\Response;
 
 class StoreReportController extends Controller
 {
-    public function catalog(Request $request, DashboardApiClient $api): JsonResponse
+    public function catalog(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_CORTE_VIRTUAL')) {
             return response()->json([
@@ -34,10 +35,17 @@ class StoreReportController extends Controller
             $validated['country'] = (string) ($user['idPais'] ?? '');
         }
 
+        if (filled($validated['country'] ?? null) && ! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
         try {
+            $data = $api->storeReportCatalog($validated['country'] ?? null);
+            $data['countries'] = $countryAccess->filterCountries($user, $data['countries'] ?? []);
+
             return response()->json([
                 'ok' => true,
-                'data' => $api->storeReportCatalog($validated['country'] ?? null),
+                'data' => $data,
             ]);
         } catch (RequestException $exception) {
             return response()->json([
@@ -48,7 +56,7 @@ class StoreReportController extends Controller
         }
     }
 
-    public function virtualCut(Request $request, DashboardApiClient $api): JsonResponse
+    public function virtualCut(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_CORTE_VIRTUAL')) {
             return response()->json([
@@ -69,6 +77,10 @@ class StoreReportController extends Controller
         if (! $this->canUseGlobalFilters($permissions)) {
             $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
             $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas'] ?? '');
+        }
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
         }
 
         try {
@@ -85,7 +97,7 @@ class StoreReportController extends Controller
         }
     }
 
-    public function virtualCutPdf(Request $request, DashboardApiClient $api): Response|JsonResponse
+    public function virtualCutPdf(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): Response|JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_CORTE_VIRTUAL')) {
             return response()->json([
@@ -106,6 +118,10 @@ class StoreReportController extends Controller
         if (! $this->canUseGlobalFilters($permissions)) {
             $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
             $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas'] ?? '');
+        }
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
         }
 
         try {
@@ -232,5 +248,13 @@ class StoreReportController extends Controller
             || in_array('STIE', $permissions, true)
             || in_array('GERENTE', $permissions, true)
             || in_array('SUPERVISOR', $permissions, true);
+    }
+
+    private function countryForbidden(): JsonResponse
+    {
+        return response()->json([
+            'ok' => false,
+            'message' => 'No tiene permiso para consultar reportes de este pais.',
+        ], 403);
     }
 }

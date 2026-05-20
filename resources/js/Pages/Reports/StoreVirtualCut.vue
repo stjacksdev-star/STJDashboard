@@ -108,6 +108,15 @@ async function fetchCatalog() {
         countries.value = payload.countries || [];
         stores.value = payload.stores || [];
 
+        if (canUseGlobalFilters.value && countries.value.length) {
+            const selectedCountryExists = countries.value.some((country) => String(country.id) === String(filters.value.country));
+
+            if (!selectedCountryExists) {
+                filters.value.country = String(countries.value[0].id);
+                return;
+            }
+        }
+
         if (showStoreFilter.value && filters.value.store) {
             const exists = stores.value.some((store) => String(store.storeId) === String(filters.value.store));
 
