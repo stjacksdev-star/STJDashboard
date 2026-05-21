@@ -413,7 +413,7 @@ function editPromotionAsset(asset) {
     assetSuccess.value = '';
     assetForm.value = {
         type: asset.type || 'BANNER',
-        platform: asset.platform || 'WEB',
+        platform: asset.platform || 'TODO',
         position: asset.position || '',
         order: asset.order ?? 1,
         status: asset.status || 'PENDIENTE',
@@ -557,7 +557,7 @@ function applyCreatePromotionRules() {
 function defaultAssetForm(promotion = null) {
     return {
         type: 'BANNER',
-        platform: 'WEB',
+        platform: 'TODO',
         position: '',
         order: 1,
         status: 'PENDIENTE',

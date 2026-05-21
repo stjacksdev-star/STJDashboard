@@ -131,25 +131,6 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                         admin
                     </span>
                 </Link>
-                <button
-                    type="button"
-                    :class="[
-                        'hidden h-9 w-9 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20 transition hover:bg-white/20 lg:inline-flex',
-                        sidebarCollapsed ? 'lg:hidden' : '',
-                    ]"
-                    :title="sidebarCollapsed ? 'Expandir menu' : 'Colapsar menu'"
-                    @click="toggleSidebarCollapsed"
-                >
-                    <svg
-                        :class="['h-4 w-4 transition', sidebarCollapsed ? 'rotate-180' : '']"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path d="m15 18-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                </button>
             </div>
 
             <div :class="['app-border-soft border-b py-5', sidebarCollapsed ? 'px-3' : 'px-5']">
