@@ -239,7 +239,7 @@ class PromotionController extends Controller
             'status' => ['nullable', Rule::in(['ACTIVO', 'PENDIENTE', 'CANCELADO', 'FINALIZADO'])],
             'startAt' => ['required', 'date'],
             'endAt' => ['required', 'date', 'after_or_equal:startAt'],
-            'title' => ['nullable', 'string', 'max:45'],
+            'title' => ['nullable', 'string', 'max:255'],
             'image' => [$imageRequired ? 'required' : 'nullable', 'image', 'max:5120'],
             'mobileImage' => ['nullable', 'image', 'max:5120'],
         ];

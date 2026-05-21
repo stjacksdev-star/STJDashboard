@@ -1411,7 +1411,7 @@ onMounted(fetchPromotions);
                                         <span class="app-muted text-sm font-medium">Titulo</span>
                                         <input
                                             v-model="assetForm.title"
-                                            maxlength="45"
+                                            maxlength="255"
                                             type="text"
                                             class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
                                             style="border-color: var(--stj-border); --tw-ring-color: var(--stj-primary-soft);"
