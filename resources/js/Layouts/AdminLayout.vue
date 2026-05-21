@@ -5,6 +5,7 @@ import { useTheme } from '../composables/useTheme';
 
 const page = usePage();
 const sidebarOpen = ref(false);
+const sidebarCollapsed = ref(resolveInitialSidebarCollapsed());
 const openGroups = ref(new Set());
 const { isDark, toggleTheme } = useTheme();
 
@@ -48,6 +49,26 @@ const isActive = (href) => {
 const groupIsActive = (item) => item.children?.some((child) => isActive(child.href));
 const iconPath = (name) => iconPaths[name] || iconPaths.dot;
 
+function resolveInitialSidebarCollapsed() {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    return window.localStorage.getItem('stj-dashboard-sidebar-collapsed') === 'true';
+}
+
+const setSidebarCollapsed = (value) => {
+    sidebarCollapsed.value = Boolean(value);
+
+    if (typeof window !== 'undefined') {
+        window.localStorage.setItem('stj-dashboard-sidebar-collapsed', sidebarCollapsed.value ? 'true' : 'false');
+    }
+};
+
+const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed(!sidebarCollapsed.value);
+};
+
 const toggleGroup = (label) => {
     const next = new Set(openGroups.value);
 
@@ -58,6 +79,14 @@ const toggleGroup = (label) => {
     }
 
     openGroups.value = next;
+};
+
+const handleGroupClick = (label) => {
+    if (sidebarCollapsed.value) {
+        setSidebarCollapsed(false);
+    }
+
+    toggleGroup(label);
 };
 
 const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(item);
@@ -73,25 +102,62 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
 
         <aside
             :class="[
-                'app-surface fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r transition-transform lg:translate-x-0',
+                'app-surface fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r transition-all duration-200 lg:translate-x-0',
+                sidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
                 sidebarOpen ? 'translate-x-0' : '-translate-x-full',
             ]"
         >
-            <div class="app-header flex h-16 items-center px-6">
-                <Link href="/" class="flex items-end gap-2">
-                    <span class="text-2xl font-bold tracking-tight">st.jack's</span>
-                    <span class="app-header-muted mb-1 text-[9px] font-semibold uppercase tracking-[0.24em]">
+            <div
+                :class="[
+                    'app-header flex h-16 items-center px-4',
+                    sidebarCollapsed ? 'lg:justify-center' : 'justify-between',
+                ]"
+            >
+                <Link
+                    href="/"
+                    :class="[
+                        'flex min-w-0 items-end gap-2',
+                        sidebarCollapsed ? 'lg:justify-center' : '',
+                    ]"
+                >
+                    <span v-if="sidebarCollapsed" class="hidden text-xl font-bold tracking-tight lg:inline">stj</span>
+                    <span :class="['text-2xl font-bold tracking-tight', sidebarCollapsed ? 'lg:hidden' : '']">st.jack's</span>
+                    <span
+                        :class="[
+                            'app-header-muted mb-1 text-[9px] font-semibold uppercase tracking-[0.24em]',
+                            sidebarCollapsed ? 'lg:hidden' : '',
+                        ]"
+                    >
                         admin
                     </span>
                 </Link>
+                <button
+                    type="button"
+                    :class="[
+                        'hidden h-9 w-9 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20 transition hover:bg-white/20 lg:inline-flex',
+                        sidebarCollapsed ? 'lg:hidden' : '',
+                    ]"
+                    :title="sidebarCollapsed ? 'Expandir menu' : 'Colapsar menu'"
+                    @click="toggleSidebarCollapsed"
+                >
+                    <svg
+                        :class="['h-4 w-4 transition', sidebarCollapsed ? 'rotate-180' : '']"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path d="m15 18-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </button>
             </div>
 
-            <div class="app-border-soft border-b px-5 py-5">
-                <div class="flex items-center gap-3">
+            <div :class="['app-border-soft border-b py-5', sidebarCollapsed ? 'px-3' : 'px-5']">
+                <div :class="['flex items-center gap-3', sidebarCollapsed ? 'lg:justify-center' : '']">
                     <div class="app-surface-soft app-border app-text-soft flex h-12 w-12 items-center justify-center rounded-full border text-xl font-semibold">
                         {{ (user.nombre || 'ST').slice(0, 1) }}
                     </div>
-                    <div class="min-w-0">
+                    <div :class="['min-w-0', sidebarCollapsed ? 'lg:hidden' : '']">
                         <p class="app-text truncate text-sm font-semibold">{{ user.nombre || 'Usuario STJ' }}</p>
                         <p class="app-muted truncate text-xs">{{ user.correo || user.usuario || 'Sesion activa' }}</p>
                     </div>
@@ -100,7 +166,12 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
 
             <nav class="flex-1 overflow-y-auto px-3 py-4">
                 <div v-for="section in navigation" :key="section.label" class="mb-6">
-                    <p class="app-primary-text px-3 text-[11px] font-semibold uppercase tracking-[0.2em]">
+                    <p
+                        :class="[
+                            'app-primary-text px-3 text-[11px] font-semibold uppercase tracking-[0.2em]',
+                            sidebarCollapsed ? 'lg:hidden' : '',
+                        ]"
+                    >
                         {{ section.label }}
                     </p>
 
@@ -109,8 +180,10 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                             <Link
                                 v-if="item.type === 'item'"
                                 :href="item.href"
+                                :title="sidebarCollapsed ? item.label : null"
                                 :class="[
                                     'flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition',
+                                    sidebarCollapsed ? 'lg:justify-center lg:px-0' : '',
                                     isActive(item.href)
                                         ? 'app-primary shadow-sm shadow-blue-600/20'
                                         : 'app-text-soft',
@@ -123,14 +196,16 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                                 <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path :d="iconPath(item.icon)" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
-                                <span class="truncate">{{ item.label }}</span>
+                                <span :class="['truncate', sidebarCollapsed ? 'lg:hidden' : '']">{{ item.label }}</span>
                             </Link>
 
                             <div v-else>
                                 <button
                                     type="button"
+                                    :title="sidebarCollapsed ? item.label : null"
                                     :class="[
                                         'flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium transition',
+                                        sidebarCollapsed ? 'lg:justify-center lg:px-0' : '',
                                         groupIsActive(item)
                                             ? 'app-primary-text'
                                             : 'app-text-soft',
@@ -138,14 +213,14 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                                     :style="{ background: groupIsActive(item) ? 'var(--stj-primary-soft)' : 'transparent' }"
                                     @mouseenter="$event.currentTarget.style.background = groupIsActive(item) ? 'var(--stj-primary-soft)' : 'var(--stj-surface-hover)'"
                                     @mouseleave="$event.currentTarget.style.background = groupIsActive(item) ? 'var(--stj-primary-soft)' : 'transparent'"
-                                    @click="toggleGroup(item.label)"
+                                    @click="handleGroupClick(item.label)"
                                 >
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path :d="iconPath(item.icon)" stroke-linecap="round" stroke-linejoin="round" />
                                     </svg>
-                                    <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+                                    <span :class="['min-w-0 flex-1 truncate', sidebarCollapsed ? 'lg:hidden' : '']">{{ item.label }}</span>
                                     <svg
-                                        :class="['h-4 w-4 transition', groupIsOpen(item) ? 'rotate-180' : '']"
+                                        :class="['h-4 w-4 transition', groupIsOpen(item) ? 'rotate-180' : '', sidebarCollapsed ? 'lg:hidden' : '']"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
@@ -155,7 +230,7 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                                     </svg>
                                 </button>
 
-                                <div v-if="groupIsOpen(item)" class="mt-1 space-y-1 pl-7">
+                                <div v-if="groupIsOpen(item)" :class="['mt-1 space-y-1 pl-7', sidebarCollapsed ? 'lg:hidden' : '']">
                                     <Link
                                         v-for="child in item.children"
                                         :key="child.href"
@@ -181,23 +256,42 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
             </nav>
         </aside>
 
-        <div class="lg:pl-64">
+        <div :class="['transition-all duration-200', sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64']">
             <header class="app-header sticky top-0 z-20 flex h-16 items-center justify-between px-4 shadow-md shadow-blue-950/10 sm:px-6">
-                <button
-                    type="button"
-                    class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20 lg:hidden"
-                    @click="sidebarOpen = true"
-                >
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-3">
+                    <button
+                        type="button"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20 lg:hidden"
+                        @click="sidebarOpen = true"
+                    >
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" />
+                        </svg>
+                    </button>
 
-                <div class="hidden items-end gap-2 lg:flex">
-                    <span class="text-2xl font-bold tracking-tight">st.jack's</span>
-                    <span class="app-header-muted mb-1 text-[9px] font-semibold uppercase tracking-[0.24em]">
-                        dashboard
-                    </span>
+                    <button
+                        type="button"
+                        class="hidden h-10 w-10 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20 transition hover:bg-white/20 lg:inline-flex"
+                        :title="sidebarCollapsed ? 'Expandir menu' : 'Colapsar menu'"
+                        @click="toggleSidebarCollapsed"
+                    >
+                        <svg
+                            :class="['h-5 w-5 transition', sidebarCollapsed ? 'rotate-180' : '']"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path d="m15 18-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+
+                    <div class="hidden items-end gap-2 lg:flex">
+                        <span class="text-2xl font-bold tracking-tight">st.jack's</span>
+                        <span class="app-header-muted mb-1 text-[9px] font-semibold uppercase tracking-[0.24em]">
+                            dashboard
+                        </span>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-4">
