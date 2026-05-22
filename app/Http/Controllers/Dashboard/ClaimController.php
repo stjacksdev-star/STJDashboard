@@ -92,7 +92,7 @@ class ClaimController extends Controller
         if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
             return $this->countryForbidden();
         }
-        $validated['registeredBy'] = $this->sessionUserId($request);
+        $validated['registeredBy'] = $this->sessionUserLabel($request);
 
         try {
             return response()->json([
@@ -169,8 +169,8 @@ class ClaimController extends Controller
             'rejectionReason' => ['nullable', 'string'],
             'resolvedAt' => ['nullable', 'date'],
             'closedAt' => ['nullable', 'date'],
-            'registeredBy' => ['nullable', 'integer', 'min:1'],
-            'assignedTo' => ['nullable', 'integer', 'min:1'],
+            'registeredBy' => ['nullable', 'string', 'max:255'],
+            'assignedTo' => ['nullable', 'string', 'max:255'],
         ]);
     }
 
@@ -225,12 +225,15 @@ class ClaimController extends Controller
         ];
     }
 
-    private function sessionUserId(Request $request): ?int
+    private function sessionUserLabel(Request $request): ?string
     {
         $user = (array) $request->session()->get('stj.user', []);
-        $id = $user['idUser'] ?? $user['id'] ?? null;
+        $name = trim((string) ($user['nombre'] ?? $user['name'] ?? ''));
+        $email = trim((string) ($user['correo'] ?? $user['email'] ?? ''));
+        $username = trim((string) ($user['usuario'] ?? $user['username'] ?? ''));
+        $label = trim($name.($email !== '' ? " <{$email}>" : ''));
 
-        return is_numeric($id) ? (int) $id : null;
+        return $label !== '' ? $label : ($username !== '' ? $username : null);
     }
 
     private function apiError(RequestException $exception, string $fallback): JsonResponse

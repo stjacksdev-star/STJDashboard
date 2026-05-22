@@ -264,7 +264,7 @@ function countryLabel(countryId) {
 function normalizePayload(values) {
     return {
         ...values,
-        assignedTo: values.assignedTo === '' ? null : Number(values.assignedTo),
+        assignedTo: values.assignedTo || null,
         registeredAt: values.registeredAt || null,
         resolvedAt: values.resolvedAt || null,
         closedAt: values.closedAt || null,
@@ -581,7 +581,7 @@ function escapeHtml(value) {
 
                             <label class="block">
                                 <span class="app-muted text-sm font-medium">Usuario asignado</span>
-                                <input v-model="form.assignedTo" type="number" min="1" class="stj-input mt-2">
+                                <input v-model.trim="form.assignedTo" maxlength="255" type="text" class="stj-input mt-2" placeholder="Nombre o correo">
                                 <span v-if="fieldError('assignedTo')" class="stj-field-error">{{ fieldError('assignedTo') }}</span>
                             </label>
                         </div>
