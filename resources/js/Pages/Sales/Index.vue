@@ -1,8 +1,9 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 import AdminLayout from '../../Layouts/AdminLayout.vue';
 
+const page = usePage();
 const loading = ref(false);
 const bootstrapping = ref(true);
 const error = ref('');
@@ -23,6 +24,12 @@ const detailData = ref(emptyDetailData());
 
 const selectedCountry = computed(() =>
     countries.value.find((country) => String(country.id) === String(filters.value.country)),
+);
+const defaultCountryId = computed(() =>
+    page.props.auth?.countries?.default?.id
+    || page.props.auth?.countries?.default?.countryId
+    || page.props.auth?.user?.idPais
+    || '',
 );
 
 const tabs = [
@@ -52,7 +59,10 @@ async function fetchKpi({ autoSelectCountry = false } = {}) {
         countries.value = data.value.countries || [];
 
         if (autoSelectCountry && !filters.value.country && countries.value.length) {
-            filters.value.country = String(countries.value[0].id);
+            const fallbackCountry = countries.value.find((country) => String(country.id) === String(defaultCountryId.value))
+                || countries.value[0];
+
+            filters.value.country = String(fallbackCountry.id);
             await fetchKpi();
         }
     } catch (exception) {
@@ -346,7 +356,10 @@ function orderUrl(order) {
     return `/pedidos/consulta?country=${order.countryId}&id=${encodeURIComponent(order.ref)}`;
 }
 
-onMounted(() => fetchKpi({ autoSelectCountry: true }));
+onMounted(() => {
+    filters.value.country = String(defaultCountryId.value || '');
+    fetchKpi({ autoSelectCountry: true });
+});
 </script>
 
 <template>

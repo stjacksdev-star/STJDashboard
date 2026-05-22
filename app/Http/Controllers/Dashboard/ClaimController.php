@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Services\StjApi\DashboardApiClient;
+use App\Services\UserCountryAccessService;
 use App\Support\DashboardAccess;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -53,17 +54,23 @@ class ClaimController extends Controller
         'cerrado',
     ];
 
-    public function index(Request $request, DashboardApiClient $api): JsonResponse
+    public function index(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! $this->canUseClaims($request)) {
             return $this->forbidden();
         }
 
         $validated = $request->validate([
+            'country' => ['nullable', 'integer', 'min:1'],
             'search' => ['nullable', 'string', 'max:150'],
             'status' => ['nullable', Rule::in(self::STATUSES)],
             'type' => ['nullable', Rule::in(self::TYPES)],
         ]);
+        $validated['country'] = $this->resolveCountry($request, $countryAccess, $validated['country'] ?? null);
+
+        if ($validated['country'] === null) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
@@ -75,13 +82,16 @@ class ClaimController extends Controller
         }
     }
 
-    public function store(Request $request, DashboardApiClient $api): JsonResponse
+    public function store(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! $this->canUseClaims($request)) {
             return $this->forbidden();
         }
 
         $validated = $this->validateClaim($request);
+        if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
+            return $this->countryForbidden();
+        }
         $validated['registeredBy'] = $this->sessionUserId($request);
 
         try {
@@ -95,13 +105,16 @@ class ClaimController extends Controller
         }
     }
 
-    public function update(Request $request, int $claim, DashboardApiClient $api): JsonResponse
+    public function update(Request $request, int $claim, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! $this->canUseClaims($request)) {
             return $this->forbidden();
         }
 
         $validated = $this->validateClaim($request);
+        if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
@@ -139,6 +152,7 @@ class ClaimController extends Controller
     {
         return $request->validate([
             'managementNumber' => ['nullable', 'string', 'max:30'],
+            'country' => ['required', 'integer', 'min:1'],
             'registeredAt' => ['nullable', 'date'],
             'stj' => ['nullable', 'string', 'max:50'],
             'customerName' => ['required', 'string', 'max:150'],
@@ -171,6 +185,27 @@ class ClaimController extends Controller
             'ok' => false,
             'message' => 'No tiene permiso para administrar reclamos.',
         ], 403);
+    }
+
+    private function countryForbidden(): JsonResponse
+    {
+        return response()->json([
+            'ok' => false,
+            'message' => 'No tiene permiso para administrar reclamos de este pais.',
+        ], 403);
+    }
+
+    private function resolveCountry(Request $request, UserCountryAccessService $countryAccess, mixed $country): ?int
+    {
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (filled($country)) {
+            return $countryAccess->canAccessCountry($user, $country) ? (int) $country : null;
+        }
+
+        $default = $countryAccess->defaultCountry($user);
+
+        return $default ? (int) $default['id'] : null;
     }
 
     /**

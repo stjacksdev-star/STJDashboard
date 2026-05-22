@@ -1470,6 +1470,7 @@ class DashboardApiClient
             ->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()
             ->get('/dashboard/claims', array_filter([
+                'country' => $filters['country'] ?? null,
                 'search' => $filters['search'] ?? null,
                 'status' => $filters['status'] ?? null,
                 'type' => $filters['type'] ?? null,

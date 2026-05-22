@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import DataTable from 'datatables.net-vue3';
 import DataTablesCore from 'datatables.net-dt';
 import { computed, onMounted, ref } from 'vue';
@@ -7,6 +7,7 @@ import AdminLayout from '../../Layouts/AdminLayout.vue';
 
 DataTable.use(DataTablesCore);
 
+const page = usePage();
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
@@ -22,6 +23,7 @@ const options = ref({
     statuses: [],
 });
 const filters = ref({
+    country: defaultCountryId(),
     search: '',
     status: '',
     type: '',
@@ -33,6 +35,7 @@ const form = ref(defaultForm());
 
 const columns = [
     { data: 'managementNumber', title: 'Gestion', width: '145px' },
+    { data: 'countryLabel', title: 'Pais', width: '120px' },
     { data: 'registeredLabel', title: 'Registro', width: '145px' },
     { data: 'customerLabel', title: 'Cliente' },
     { data: 'orderLabel', title: 'Pedido/STJ', width: '120px' },
@@ -67,6 +70,7 @@ const dataTableOptions = {
 const rows = computed(() =>
     claims.value.map((claim) => ({
         ...claim,
+        countryLabel: countryLabel(claim.country),
         registeredLabel: formatDate(claim.registeredAt),
         customerLabel: customerHtml(claim),
         orderLabel: orderHtml(claim),
@@ -168,6 +172,7 @@ function openEditModal(claim) {
         managementNumber: claim.managementNumber || '',
         registeredAt: toInputDateTime(claim.registeredAt),
         stj: claim.stj || '',
+        country: claim.country ? String(claim.country) : defaultCountryId(),
         customerName: claim.customerName || '',
         customerEmail: claim.customerEmail || '',
         customerPhone: claim.customerPhone || '',
@@ -217,6 +222,7 @@ function defaultForm() {
         managementNumber: '',
         registeredAt: '',
         stj: '',
+        country: defaultCountryId(),
         customerName: '',
         customerEmail: '',
         customerPhone: '',
@@ -233,6 +239,26 @@ function defaultForm() {
         closedAt: '',
         assignedTo: '',
     };
+}
+
+function allowedCountries() {
+    return page.props.auth?.countries?.allowed || [];
+}
+
+function defaultCountryId() {
+    return String(
+        page.props.auth?.countries?.default?.id
+        || page.props.auth?.countries?.default?.countryId
+        || page.props.auth?.user?.idPais
+        || allowedCountries()[0]?.id
+        || '',
+    );
+}
+
+function countryLabel(countryId) {
+    const country = allowedCountries().find((item) => String(item.id) === String(countryId));
+
+    return country ? `${country.code} - ${country.name}` : (countryId || 'N/D');
 }
 
 function normalizePayload(values) {
@@ -348,7 +374,16 @@ function escapeHtml(value) {
                         <h1 class="app-text mt-2 text-2xl font-bold">Reclamos</h1>
                     </div>
 
-                    <div class="grid gap-3 sm:grid-cols-3 lg:min-w-[680px]">
+                    <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[860px] lg:grid-cols-4">
+                        <label class="block">
+                            <span class="app-muted text-sm font-medium">Pais</span>
+                            <select v-model="filters.country" class="stj-input mt-2" required>
+                                <option v-for="country in allowedCountries()" :key="country.id" :value="String(country.id)">
+                                    {{ country.code }} - {{ country.name }}
+                                </option>
+                            </select>
+                        </label>
+
                         <label class="block">
                             <span class="app-muted text-sm font-medium">Busqueda</span>
                             <input v-model.trim="filters.search" type="search" class="stj-input mt-2" placeholder="Gestion, cliente, correo, DUI">
@@ -448,6 +483,16 @@ function escapeHtml(value) {
                         </div>
 
                         <div class="grid gap-4 lg:grid-cols-3">
+                            <label class="block">
+                                <span class="app-muted text-sm font-medium">Pais</span>
+                                <select v-model="form.country" required class="stj-input mt-2">
+                                    <option v-for="country in allowedCountries()" :key="country.id" :value="String(country.id)">
+                                        {{ country.code }} - {{ country.name }}
+                                    </option>
+                                </select>
+                                <span v-if="fieldError('country')" class="stj-field-error">{{ fieldError('country') }}</span>
+                            </label>
+
                             <label class="block">
                                 <span class="app-muted text-sm font-medium">Numero gestion</span>
                                 <input v-model.trim="form.managementNumber" maxlength="30" type="text" class="stj-input mt-2" placeholder="Auto: STJ-REC-...">
