@@ -88,7 +88,9 @@ const hasProductsDifference = computed(() => Math.abs(roundMoney(order.value?.to
 const hasPaidDifference = computed(() => Math.abs(roundMoney(order.value?.totals?.paidDifference || 0)) >= 0.01);
 const hasRefund = computed(() => Boolean(order.value?.refund?.hasRefund));
 const processDifference = computed(() => roundMoney(order.value?.totals?.paidDifference || 0));
-const paymentIsCard = computed(() => String(order.value?.payment?.type || '').toUpperCase() === 'TARJETA');
+const paymentType = computed(() => String(order.value?.payment?.type || '').toUpperCase());
+const paymentIsCard = computed(() => paymentType.value === 'TARJETA');
+const paymentIsCash = computed(() => paymentType.value === 'EFECTIVO');
 const processRefund = computed(() => paymentIsCard.value ? Math.max(0, -processDifference.value) : 0);
 const processCharge = computed(() => Math.max(0, processDifference.value));
 const editingProduct = computed(() =>
@@ -782,26 +784,30 @@ onMounted(() => {
                         <p class="app-primary-text text-xs font-semibold uppercase">Pago</p>
                         <dl class="mt-4 space-y-3 text-sm">
                             <div>
-                                <dt class="app-muted font-semibold">Metodo</dt>
-                                <dd class="app-text">{{ display(order.payment.card || order.payment.type) }}</dd>
+                                <dt class="app-muted font-semibold">Tipo</dt>
+                                <dd class="app-text">{{ display(order.payment.type) }}</dd>
                             </div>
-                            <div>
+                            <div v-if="paymentIsCard">
+                                <dt class="app-muted font-semibold">Tarjeta</dt>
+                                <dd class="app-text">{{ display(order.payment.card) }}</dd>
+                            </div>
+                            <div v-if="paymentIsCard">
                                 <dt class="app-muted font-semibold">Emisor</dt>
                                 <dd class="app-text">{{ display(order.payment.issuer) }}</dd>
                             </div>
-                            <div>
+                            <div v-if="paymentIsCard">
                                 <dt class="app-muted font-semibold">Estado</dt>
                                 <dd class="app-text">{{ display(order.payment.status) }}</dd>
                             </div>
-                            <div>
+                            <div v-if="paymentIsCard">
                                 <dt class="app-muted font-semibold">Autorizacion</dt>
                                 <dd class="app-text">{{ display(order.payment.authorization) }}</dd>
                             </div>
-                            <div>
+                            <div v-if="paymentIsCard">
                                 <dt class="app-muted font-semibold">Ticket</dt>
                                 <dd class="app-text">{{ display(order.payment.ticket) }}</dd>
                             </div>
-                            <div v-if="order.payment.type === 'EFECTIVO'">
+                            <div v-if="paymentIsCash">
                                 <dt class="app-muted font-semibold">Cambio</dt>
                                 <dd class="app-text">{{ formatMoney(order.payment.change) }}</dd>
                             </div>
