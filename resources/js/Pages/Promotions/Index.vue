@@ -494,8 +494,8 @@ function firstError(errors) {
 
 function defaultCreateForm() {
     const start = new Date();
-    start.setDate(start.getDate() + 1);
-    start.setHours(8, 0, 0, 0);
+    start.setMinutes(start.getMinutes() + 5);
+    start.setSeconds(0, 0);
 
     const end = new Date(start);
     end.setDate(end.getDate() + 7);
