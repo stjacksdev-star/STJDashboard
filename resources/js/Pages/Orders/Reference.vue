@@ -1,6 +1,5 @@
 <script setup>
-import { Head, router } from '@inertiajs/vue3';
-import { usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 import AdminLayout from '../../Layouts/AdminLayout.vue';
 
@@ -15,12 +14,6 @@ const props = defineProps({
     },
 });
 
-const countries = [
-    { id: '1', code: 'SV', name: 'El Salvador', currency: 'USD' },
-    { id: '2', code: 'GT', name: 'Guatemala', currency: 'Q' },
-    { id: '3', code: 'CR', name: 'Costa Rica', currency: 'CRC' },
-    { id: '5', code: 'PA', name: 'Panama', currency: 'USD' },
-];
 const page = usePage();
 const loading = ref(false);
 const error = ref('');
@@ -44,13 +37,14 @@ const routeSaving = ref(false);
 const routeError = ref('');
 const routePromptAfterProcess = ref(false);
 const form = ref({
-    country: props.initialCountry || '',
+    country: props.initialCountry || defaultCountryId(),
     reference: props.initialReference || '',
 });
 
 const order = computed(() => orderData.value?.order || null);
 const products = computed(() => orderData.value?.products || []);
-const selectedCountry = computed(() => countries.find((country) => country.id === String(form.value.country)));
+const countries = computed(() => allowedCountries());
+const selectedCountry = computed(() => countries.value.find((country) => String(country.id) === String(form.value.country)));
 const currency = computed(() => selectedCountry.value?.currency || '');
 const permissions = computed(() => page.props.auth?.permissions || []);
 const canProcessOrders = computed(() =>
@@ -543,7 +537,49 @@ function productNew(product, field) {
     return '';
 }
 
+function allowedCountries() {
+    const allowed = page.props.auth?.countries?.allowed || [];
+
+    return allowed.map((country) => ({
+        ...country,
+        id: String(country.id ?? country.countryId ?? ''),
+        code: country.code || country.countryCode || '',
+        name: country.name || country.countryName || country.code || country.countryCode || '',
+        currency: country.currency || countryCurrency(country.id ?? country.countryId),
+    })).filter((country) => country.id !== '');
+}
+
+function defaultCountryId() {
+    return String(
+        page.props.auth?.countries?.default?.id
+        || page.props.auth?.countries?.default?.countryId
+        || page.props.auth?.user?.idPais
+        || allowedCountries()[0]?.id
+        || '',
+    );
+}
+
+function ensureSelectedCountry() {
+    const exists = countries.value.some((country) => String(country.id) === String(form.value.country));
+
+    if (!exists) {
+        form.value.country = defaultCountryId();
+    }
+}
+
+function countryCurrency(countryId) {
+    return {
+        1: 'USD',
+        2: 'Q',
+        3: 'CRC',
+        5: 'USD',
+        7: 'L',
+    }[Number(countryId)] || '';
+}
+
 onMounted(() => {
+    ensureSelectedCountry();
+
     if (form.value.country && form.value.reference) {
         searchOrder({ updateUrl: false });
     }

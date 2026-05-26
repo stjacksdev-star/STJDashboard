@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Services\StjApi\DashboardApiClient;
+use App\Services\UserCountryAccessService;
 use App\Support\DashboardAccess;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -26,7 +27,7 @@ class OrderController extends Controller
         'ANULADO-EFECTIVO',
     ];
 
-    public function refunds(Request $request, DashboardApiClient $api): JsonResponse
+    public function refunds(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_DEVOLUCIONES')) {
             return response()->json([
@@ -54,6 +55,10 @@ class OrderController extends Controller
             $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas']);
         }
 
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
         try {
             return response()->json([
                 'ok' => true,
@@ -68,7 +73,7 @@ class OrderController extends Controller
         }
     }
 
-    public function refundPdf(Request $request, int $order, DashboardApiClient $api): Response|JsonResponse
+    public function refundPdf(Request $request, int $order, DashboardApiClient $api, UserCountryAccessService $countryAccess): Response|JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_DEVOLUCIONES')) {
             return response()->json([
@@ -94,6 +99,10 @@ class OrderController extends Controller
         if ($hasAssignedStore && ! $canUseGlobalFilters) {
             $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
             $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas']);
+        }
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
         }
 
         $validated['status'] = 'SI';
@@ -147,7 +156,7 @@ class OrderController extends Controller
         }
     }
 
-    public function paymentAttempts(Request $request, DashboardApiClient $api): JsonResponse
+    public function paymentAttempts(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
             return response()->json([
@@ -173,6 +182,10 @@ class OrderController extends Controller
             $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas']);
         }
 
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
         try {
             return response()->json([
                 'ok' => true,
@@ -187,7 +200,7 @@ class OrderController extends Controller
         }
     }
 
-    public function search(Request $request, DashboardApiClient $api): JsonResponse
+    public function search(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
             return response()->json([
@@ -215,6 +228,10 @@ class OrderController extends Controller
             $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas']);
         }
 
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
         try {
             return response()->json([
                 'ok' => true,
@@ -229,12 +246,18 @@ class OrderController extends Controller
         }
     }
 
-    public function showByReference(Request $request, DashboardApiClient $api): JsonResponse
+    public function showByReference(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([
             'country' => ['required', 'string', 'max:3'],
             'reference' => ['required', 'string', 'max:60'],
         ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
@@ -250,7 +273,7 @@ class OrderController extends Controller
         }
     }
 
-    public function processedPdf(Request $request, DashboardApiClient $api): Response|JsonResponse
+    public function processedPdf(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): Response|JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
             return response()->json([
@@ -272,6 +295,10 @@ class OrderController extends Controller
 
         if ($hasAssignedStore && ! $canUseGlobalFilters) {
             $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
+        }
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
         }
 
         try {
@@ -331,13 +358,19 @@ class OrderController extends Controller
         }
     }
 
-    public function product(Request $request, DashboardApiClient $api): JsonResponse
+    public function product(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([
             'country' => ['required', 'string', 'max:3'],
             'sku' => ['required', 'string', 'max:60'],
             'size' => ['nullable', 'string', 'max:20'],
         ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
@@ -384,7 +417,7 @@ class OrderController extends Controller
         }
     }
 
-    public function process(Request $request, DashboardApiClient $api): JsonResponse
+    public function process(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PROCESAR_PEDIDO')) {
             return response()->json([
@@ -398,6 +431,12 @@ class OrderController extends Controller
             'reference' => ['required', 'string', 'max:60'],
             'ticket' => ['required', 'string', 'max:100'],
         ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
@@ -419,7 +458,7 @@ class OrderController extends Controller
         }
     }
 
-    public function deliver(Request $request, DashboardApiClient $api): JsonResponse
+    public function deliver(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
             return response()->json([
@@ -432,6 +471,12 @@ class OrderController extends Controller
             'country' => ['required', 'string', 'max:3'],
             'reference' => ['required', 'string', 'max:60'],
         ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
@@ -452,7 +497,7 @@ class OrderController extends Controller
         }
     }
 
-    public function markInRoute(Request $request, DashboardApiClient $api): JsonResponse
+    public function markInRoute(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS')) {
             return response()->json([
@@ -465,6 +510,12 @@ class OrderController extends Controller
             'country' => ['required', 'string', 'max:3'],
             'reference' => ['required', 'string', 'max:60'],
         ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
@@ -532,5 +583,13 @@ class OrderController extends Controller
             7 => 'L',
             default => 'USD',
         };
+    }
+
+    private function countryForbidden(): JsonResponse
+    {
+        return response()->json([
+            'ok' => false,
+            'message' => 'No tiene permiso para consultar este pais.',
+        ], 403);
     }
 }

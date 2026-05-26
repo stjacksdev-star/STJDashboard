@@ -15,7 +15,7 @@ const error = ref('');
 const catalogError = ref('');
 const searched = ref(false);
 const data = ref(emptyData());
-const countries = ref([]);
+const countries = ref(allowedCountries());
 const stores = ref([]);
 const tableKey = ref(0);
 const attemptsModal = ref({
@@ -47,7 +47,7 @@ const resolvedStoreLabel = computed(() =>
 );
 
 const filters = ref({
-    country: String(user.value?.idPais || ''),
+    country: defaultCountryId(),
     store: '',
     query: '',
 });
@@ -110,26 +110,24 @@ const summaryCards = computed(() => [
 
 async function fetchCatalog() {
     if (!canUseGlobalFilters.value) {
-        countries.value = [];
+        countries.value = allowedCountries();
         stores.value = [];
         return;
     }
 
+    ensureSelectedCountry();
     catalogLoading.value = true;
     catalogError.value = '';
 
     try {
-        const todayValue = today();
-        const response = await window.axios.get('/dashboard-api/sales/kpi', {
+        const response = await window.axios.get('/dashboard-api/sales/catalog', {
             params: {
-                country: filters.value.country,
-                startDate: todayValue,
-                endDate: todayValue,
+                country: activeCountry(),
             },
         });
 
         const payload = response.data.data || {};
-        countries.value = payload.countries || [];
+        countries.value = allowedCountries();
         stores.value = payload.stores || [];
 
         if (filters.value.store) {
@@ -253,7 +251,7 @@ function handleTableClick(event) {
 }
 
 function activeCountry() {
-    return canUseGlobalFilters.value ? filters.value.country : String(user.value?.idPais || '');
+    return canUseGlobalFilters.value ? filters.value.country : defaultCountryId();
 }
 
 function activeStore() {
@@ -288,13 +286,33 @@ function actionsHtml(order) {
     return `<div class="stj-action-list">${actions.join('')}</div>`;
 }
 
-function today() {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+function allowedCountries() {
+    const allowed = page.props.auth?.countries?.allowed || [];
 
-    return `${year}-${month}-${day}`;
+    return allowed.map((country) => ({
+        ...country,
+        id: String(country.id ?? country.countryId ?? ''),
+        code: country.code || country.countryCode || '',
+        name: country.name || country.countryName || country.code || country.countryCode || '',
+    })).filter((country) => country.id !== '');
+}
+
+function defaultCountryId() {
+    return String(
+        page.props.auth?.countries?.default?.id
+        || page.props.auth?.countries?.default?.countryId
+        || page.props.auth?.user?.idPais
+        || allowedCountries()[0]?.id
+        || '',
+    );
+}
+
+function ensureSelectedCountry() {
+    const exists = countries.value.some((country) => String(country.id) === String(filters.value.country));
+
+    if (!exists) {
+        filters.value.country = defaultCountryId();
+    }
 }
 
 function emptyData() {
@@ -347,7 +365,9 @@ watch(
 
 onMounted(async () => {
     if (!canUseGlobalFilters.value) {
-        filters.value.country = String(user.value?.idPais || '');
+        filters.value.country = defaultCountryId();
+    } else {
+        ensureSelectedCountry();
     }
 
     await fetchCatalog();
