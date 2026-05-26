@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Services\StjApi\DashboardApiClient;
 use App\Services\UserCountryAccessService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -152,6 +153,12 @@ class SalesController extends Controller
                 'message' => $exception->response?->json('message') ?: 'No fue posible obtener las visitas desde stj-api.',
                 'errors' => $exception->response?->json('errors') ?: [],
             ], $exception->response?->status() ?: 502);
+        } catch (ConnectionException) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'stj-api tardo demasiado en responder el grafico de visitas. Intente con un rango menor o vuelva a generar.',
+                'errors' => [],
+            ], 504);
         }
     }
 

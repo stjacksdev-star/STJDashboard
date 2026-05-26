@@ -144,7 +144,7 @@ class DashboardApiClient
     public function visitsChart(array $filters): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
-            ->timeout((int) config('stj.api.timeout'))
+            ->timeout(max(60, (int) config('stj.api.timeout')))
             ->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()
             ->get('/dashboard/sales/visits', array_filter([
