@@ -169,16 +169,9 @@ const hasPermission = (permission) =>
     permissions.value.includes(permission) || permissions.value.includes(`OP_${permission}`);
 const storeCode = computed(() => String(user.value?.storeCode || user.value?.tiendas || '00000'));
 const hasAssignedStore = computed(() => storeCode.value !== '' && storeCode.value !== '00000');
-const canSeeAnalyticsDashboard = computed(() =>
-    permissions.value.includes('ROOT')
-    || hasPermission('GERENTE')
-    || hasPermission('ADMIN')
-    || hasPermission('ADMINISTRADOR')
-    || hasPermission('ADMINISTRADORES')
-    || hasPermission('ADMINISTRACION')
-    || hasPermission('SUPERVISOR'),
-);
-const isStoreManagerDashboard = computed(() => hasAssignedStore.value && !canSeeAnalyticsDashboard.value);
+const canSeeAnalyticsDashboard = computed(() => hasPermission('INDICADORES_GENERICOS'));
+const canSeeStoreDashboard = computed(() => hasPermission('INDICADORES_TIENDA'));
+const isStoreManagerDashboard = computed(() => canSeeStoreDashboard.value && !canSeeAnalyticsDashboard.value);
 const welcomeName = computed(() => user.value?.nombre || user.value?.usuario || 'Usuario');
 const storeSummaryLoading = ref(false);
 const storeSummaryError = ref('');
