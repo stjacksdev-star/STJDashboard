@@ -151,6 +151,43 @@ const appFilters = ref({
     year: today.getFullYear(),
 });
 
+const processedStatuses = [
+    'PREPARADO',
+    'EN-RUTA',
+    'ENTREGADO',
+    'ANULADO-ERROR',
+    'ANULADO-PRUEBA',
+    'ANULADO-CLIENTE',
+    'ANULADO-INVENTARIO',
+    'DEVOLUCION',
+    'ANULADO-EFECTIVO',
+];
+
+const user = computed(() => page.props.auth?.user || {});
+const permissions = computed(() => page.props.auth?.permissions || []);
+const hasPermission = (permission) =>
+    permissions.value.includes(permission) || permissions.value.includes(`OP_${permission}`);
+const storeCode = computed(() => String(user.value?.storeCode || user.value?.tiendas || '00000'));
+const hasAssignedStore = computed(() => storeCode.value !== '' && storeCode.value !== '00000');
+const canSeeAnalyticsDashboard = computed(() =>
+    permissions.value.includes('ROOT')
+    || hasPermission('GERENTE')
+    || hasPermission('ADMIN')
+    || hasPermission('ADMINISTRADOR')
+    || hasPermission('ADMINISTRADORES')
+    || hasPermission('ADMINISTRACION')
+    || hasPermission('SUPERVISOR'),
+);
+const isStoreManagerDashboard = computed(() => hasAssignedStore.value && !canSeeAnalyticsDashboard.value);
+const welcomeName = computed(() => user.value?.nombre || user.value?.usuario || 'Usuario');
+const storeSummaryLoading = ref(false);
+const storeSummaryError = ref('');
+const storeSummary = ref({
+    pending: { orders: 0, items: 0, amount: 0 },
+    processed: { orders: 0, items: 0, amount: 0 },
+    month: { orders: 0, items: 0, amount: 0 },
+});
+
 const baseCountries = [
     { id: '0', label: 'Todos' },
     { id: '1', label: 'El Salvador' },
@@ -343,6 +380,76 @@ const money = (value) => new Intl.NumberFormat('en-US', {
     currency: 'USD',
     maximumFractionDigits: 2,
 }).format(Number(value || 0));
+const integer = (value) => Number(value || 0).toLocaleString('en-US');
+
+const storeSummaryCards = computed(() => [
+    {
+        label: 'Pedidos pendientes',
+        value: integer(storeSummary.value.pending.orders),
+        detail: `${integer(storeSummary.value.pending.items)} articulos | ${money(storeSummary.value.pending.amount)}`,
+    },
+    {
+        label: 'Pedidos procesados',
+        value: integer(storeSummary.value.processed.orders),
+        detail: `${integer(storeSummary.value.processed.items)} articulos | ${money(storeSummary.value.processed.amount)}`,
+    },
+    {
+        label: 'Pedidos del mes',
+        value: integer(storeSummary.value.month.orders),
+        detail: `${integer(storeSummary.value.month.items)} articulos | ${money(storeSummary.value.month.amount)}`,
+    },
+]);
+
+const monthStart = () => formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
+
+const loadStoreSummary = async () => {
+    if (!user.value?.idPais || !hasAssignedStore.value) {
+        return;
+    }
+
+    storeSummaryLoading.value = true;
+    storeSummaryError.value = '';
+
+    const params = {
+        country: String(user.value.idPais),
+        store: storeCode.value,
+        startDate: monthStart(),
+        endDate: formatDate(today),
+    };
+
+    try {
+        const [pendingResponse, processedResponse] = await Promise.all([
+            window.axios.get('/dashboard-api/sales/orders', {
+                params: {
+                    ...params,
+                    pending: true,
+                },
+            }),
+            window.axios.get('/dashboard-api/sales/orders', {
+                params: {
+                    ...params,
+                    statuses: processedStatuses.join(','),
+                },
+            }),
+        ]);
+        const pending = pendingResponse.data.data?.summary || {};
+        const processed = processedResponse.data.data?.summary || {};
+
+        storeSummary.value = {
+            pending,
+            processed,
+            month: {
+                orders: Number(pending.orders || 0) + Number(processed.orders || 0),
+                items: Number(pending.items || 0) + Number(processed.items || 0),
+                amount: Number(pending.amount || 0) + Number(processed.amount || 0),
+            },
+        };
+    } catch (exception) {
+        storeSummaryError.value = exception.response?.data?.message || 'No fue posible cargar los indicadores de la tienda.';
+    } finally {
+        storeSummaryLoading.value = false;
+    }
+};
 
 const loadChart = async () => {
     loading.value = true;
@@ -629,6 +736,15 @@ watch(activeVisitsTab, () => {
 watch(countries, ensureValidSalesCountry);
 
 onMounted(() => {
+    if (isStoreManagerDashboard.value) {
+        loadStoreSummary();
+        return;
+    }
+
+    if (!canSeeAnalyticsDashboard.value) {
+        return;
+    }
+
     ensureValidSalesCountry();
     loadChart();
 });
@@ -639,7 +755,44 @@ onMounted(() => {
 
     <AdminLayout>
         <section class="mx-auto w-full max-w-7xl">
-            <div class="app-surface rounded-lg border">
+            <div v-if="isStoreManagerDashboard" class="grid gap-5">
+                <div class="app-surface rounded-lg border p-6" style="border-color: var(--stj-border);">
+                    <p class="app-primary-text text-xs font-semibold uppercase">Tienda</p>
+                    <h1 class="app-text mt-2 text-2xl font-bold">Resumen de pedidos</h1>
+                    <p class="app-muted mt-1 text-sm">{{ user.storeLabel || storeCode }} | Mes actual</p>
+                </div>
+
+                <div v-if="storeSummaryError" class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {{ storeSummaryError }}
+                </div>
+
+                <div class="relative grid gap-4 md:grid-cols-3">
+                    <div v-if="storeSummaryLoading" class="app-muted absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70 text-sm">
+                        Cargando indicadores...
+                    </div>
+
+                    <div
+                        v-for="card in storeSummaryCards"
+                        :key="card.label"
+                        class="app-surface rounded-lg border p-5"
+                        style="border-color: var(--stj-border);"
+                    >
+                        <p class="app-muted text-sm">{{ card.label }}</p>
+                        <p class="app-text mt-3 text-3xl font-bold">{{ card.value }}</p>
+                        <p class="app-text-soft mt-2 text-sm">{{ card.detail }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else-if="!canSeeAnalyticsDashboard" class="app-surface rounded-lg border p-8" style="border-color: var(--stj-border);">
+                <p class="app-primary-text text-xs font-semibold uppercase">St. Jack's ecommerce</p>
+                <h1 class="app-text mt-3 text-2xl font-bold">Bienvenido/a al nuevo dashboard de St. Jack's para ecommerce</h1>
+                <p class="app-muted mt-3 max-w-2xl text-sm">
+                    Hola {{ welcomeName }}. Usa el menu lateral para acceder a los modulos disponibles para tu perfil.
+                </p>
+            </div>
+
+            <div v-else class="app-surface rounded-lg border">
                 <div class="app-border-soft overflow-x-auto border-b">
                     <nav class="flex min-w-max px-4" aria-label="Dashboard tabs">
                         <button
