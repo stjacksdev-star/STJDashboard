@@ -35,11 +35,7 @@ const storeCode = computed(() => String(user.value?.storeCode || user.value?.tie
 const hasAssignedStore = computed(() => storeCode.value !== '' && storeCode.value !== '00000');
 const canUseGlobalFilters = computed(() =>
     permissions.value.includes('ROOT')
-    || permissions.value.includes('STIE')
-    || permissions.value.includes('GERENTE')
-    || permissions.value.includes('ATEC')
-    || permissions.value.includes('ADMINEC')
-    || permissions.value.includes('SUPERVISOR'),
+    || permissions.value.includes('INDICADORES_GENERICOS'),
 );
 const isStoreManager = computed(() => hasAssignedStore.value && !canUseGlobalFilters.value);
 const resolvedStoreLabel = computed(() =>

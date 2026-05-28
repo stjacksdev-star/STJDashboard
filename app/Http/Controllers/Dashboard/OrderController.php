@@ -563,11 +563,7 @@ class OrderController extends Controller
     private function canUseGlobalFilters(array $permissions): bool
     {
         return in_array('ROOT', $permissions, true)
-            || in_array('STIE', $permissions, true)
-            || in_array('GERENTE', $permissions, true)
-            || in_array('ATEC', $permissions, true)
-            || in_array('ADMINEC', $permissions, true)
-            || in_array('SUPERVISOR', $permissions, true);
+            || in_array('INDICADORES_GENERICOS', $permissions, true);
     }
 
     private function normalizeStoreCode(string $value): string
