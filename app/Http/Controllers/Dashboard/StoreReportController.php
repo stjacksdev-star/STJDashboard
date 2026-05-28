@@ -160,7 +160,7 @@ class StoreReportController extends Controller
         }
     }
 
-    public function pendingItems(Request $request, DashboardApiClient $api): JsonResponse
+    public function pendingItems(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA')) {
             return response()->json([
@@ -188,6 +188,10 @@ class StoreReportController extends Controller
 
         $validated['type'] ??= 'TIENDA';
 
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
         try {
             return response()->json([
                 'ok' => true,
@@ -202,7 +206,7 @@ class StoreReportController extends Controller
         }
     }
 
-    public function pendingItemsByOrder(Request $request, DashboardApiClient $api): JsonResponse
+    public function pendingItemsByOrder(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA_PEDIDO')) {
             return response()->json([
@@ -223,6 +227,10 @@ class StoreReportController extends Controller
         if (! $this->canUseGlobalFilters($permissions)) {
             $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
             $validated['store'] = (string) ($user['storeCode'] ?? $user['tiendas'] ?? '');
+        }
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
         }
 
         try {
@@ -247,6 +255,8 @@ class StoreReportController extends Controller
         return in_array('ROOT', $permissions, true)
             || in_array('STIE', $permissions, true)
             || in_array('GERENTE', $permissions, true)
+            || in_array('ATEC', $permissions, true)
+            || in_array('ADMINEC', $permissions, true)
             || in_array('SUPERVISOR', $permissions, true);
     }
 

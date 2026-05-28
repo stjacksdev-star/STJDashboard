@@ -25,6 +25,8 @@ const canUseGlobalFilters = computed(() =>
     permissions.value.includes('ROOT')
     || permissions.value.includes('STIE')
     || permissions.value.includes('GERENTE')
+    || permissions.value.includes('ATEC')
+    || permissions.value.includes('ADMINEC')
     || permissions.value.includes('SUPERVISOR'),
 );
 const showStoreFilter = computed(() => canUseGlobalFilters.value);
