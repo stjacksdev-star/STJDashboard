@@ -576,6 +576,20 @@ function display(value, fallback = 'N/D') {
     return value !== null && value !== undefined && String(value).trim() !== '' ? value : fallback;
 }
 
+function yesNo(value) {
+    const normalized = String(value ?? '').trim().toUpperCase();
+
+    if (['SI', 'S', '1', 'TRUE'].includes(normalized)) {
+        return 'SI';
+    }
+
+    if (['NO', 'N', '0', 'FALSE'].includes(normalized)) {
+        return 'NO';
+    }
+
+    return 'N/D';
+}
+
 function productSubtotal(product, key) {
     return `${currency.value} ${formatMoney(product[key])}`;
 }
@@ -984,6 +998,10 @@ onMounted(() => {
                             <div>
                                 <dt class="app-muted font-semibold">Punto referencia</dt>
                                 <dd class="app-text">{{ display(order.shipping.reference) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="app-muted font-semibold">Recibe misma persona</dt>
+                                <dd class="app-text">{{ yesNo(order.shipping.samePerson) }}</dd>
                             </div>
                             <div>
                                 <dt class="app-muted font-semibold">Costo</dt>

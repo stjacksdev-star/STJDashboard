@@ -52,7 +52,6 @@ class ClaimController extends Controller
         'en_proceso',
         'resuelto',
         'rechazado',
-        'cerrado',
     ];
 
     public function index(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse

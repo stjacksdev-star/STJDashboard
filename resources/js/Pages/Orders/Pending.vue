@@ -16,6 +16,7 @@ const data = ref(emptyData());
 const countries = ref([]);
 const stores = ref([]);
 const tableKey = ref(0);
+const pageReady = ref(false);
 
 const user = computed(() => page.props.auth?.user || {});
 const permissions = computed(() => page.props.auth?.permissions || []);
@@ -156,11 +157,14 @@ async function fetchStoreSummary() {
 }
 
 async function loadPage() {
-    await fetchStoreSummary();
-
     if (!showFilters.value) {
         await fetchPendingOrders();
+        pageReady.value = true;
+        return;
     }
+
+    await fetchStoreSummary();
+    pageReady.value = true;
 }
 
 function submitFilters() {
@@ -372,7 +376,7 @@ watch(
             </div>
 
             <div class="app-surface mt-6 rounded-lg border p-4">
-                <div v-if="loading" class="app-muted px-4 py-8 text-center text-sm">
+                <div v-if="loading || !pageReady" class="app-muted px-4 py-8 text-center text-sm">
                     Cargando pedidos pendientes...
                 </div>
 
