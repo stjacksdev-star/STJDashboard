@@ -71,7 +71,7 @@ const orderStoreCode = computed(() => String(order.value?.storePickup?.storeCode
 const normalizedOrderStoreCode = computed(() => normalizeStoreCode(orderStoreCode.value));
 const isSameSessionStore = computed(() => !hasAssignedStore.value || normalizedOrderStoreCode.value === normalizedSessionStoreCode.value);
 const canEditProducts = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value);
-const canEditOrderData = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value);
+const canEditOrderData = computed(() => order.value?.status === 'RECIBIDO');
 const canProcessCurrentOrder = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value && !editingLineId.value);
 const canMarkPackedCurrentOrder = computed(() =>
     order.value?.status === 'RECIBIDO'

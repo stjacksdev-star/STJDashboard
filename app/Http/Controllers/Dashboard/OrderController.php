@@ -419,13 +419,6 @@ class OrderController extends Controller
 
     public function updateData(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
-        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PROCESAR_PEDIDO')) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'No tiene permiso para editar datos del pedido.',
-            ], 403);
-        }
-
         $validated = $request->validate([
             'country' => ['required', 'string', 'max:3'],
             'reference' => ['required', 'string', 'max:60'],

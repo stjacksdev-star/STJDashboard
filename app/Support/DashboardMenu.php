@@ -34,7 +34,7 @@ class DashboardMenu
                     self::item('Pendientes', '/pedidos/pendientes', 'list', 'MENU_PEDIDOS'),
                     self::item('Procesados', '/pedidos/procesados', 'clipboard', 'MENU_PEDIDOS'),
                     self::item('Devoluciones', '/pedidos/devoluciones', 'refresh', 'MENU_DEVOLUCIONES'),
-                    self::item('Reclamos', '/pedidos/reclamos', 'report', 'MENU_PEDIDOS'),
+                    self::item('Reclamos', '/pedidos/reclamos', 'report', 'MENU_RECLAMOS'),
                     self::group('Busqueda', 'search', [
                         self::item('General', '/pedidos/busqueda', permission: 'MENU_PEDIDOS'),
                         self::item('Referencia', '/pedidos/consulta'),

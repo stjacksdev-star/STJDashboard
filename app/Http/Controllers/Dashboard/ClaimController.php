@@ -223,7 +223,7 @@ class ClaimController extends Controller
 
     private function canUseClaims(Request $request): bool
     {
-        return DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PEDIDOS');
+        return DashboardAccess::can($request->session()->get('stj.user'), 'MENU_RECLAMOS');
     }
 
     private function forbidden(): JsonResponse
