@@ -3,6 +3,7 @@
 namespace App\Services\StjApi;
 
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 
@@ -833,12 +834,42 @@ class DashboardApiClient
     }
 
     /**
+     * @param array<string, mixed> $data
      * @param array<string, mixed> $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
      */
-    public function processOrder(string $country, string $reference, string $ticket, array $actor = []): array
+    public function updateOrderData(array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/orders/data', [
+                'country' => $data['country'],
+                'reference' => $data['reference'],
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'whatsapp' => $data['whatsapp'],
+                'billingAddress' => $data['billingAddress'],
+                'shippingAddress' => $data['shippingAddress'] ?? null,
+                'shippingReference' => $data['shippingReference'] ?? null,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function processOrder(string $country, string $reference, string $ticket, ?string $refundObservation = null, array $actor = []): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
@@ -848,6 +879,7 @@ class DashboardApiClient
                 'country' => $country,
                 'reference' => $reference,
                 'ticket' => $ticket,
+                'refundObservation' => $refundObservation,
                 'actor' => $actor,
             ]);
 
@@ -869,6 +901,29 @@ class DashboardApiClient
             ->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()
             ->post('/dashboard/orders/deliver', [
+                'country' => $country,
+                'reference' => $reference,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function markOrderPackedForPickup(string $country, string $reference, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/orders/packed-pickup', [
                 'country' => $country,
                 'reference' => $reference,
                 'actor' => $actor,
@@ -1474,6 +1529,8 @@ class DashboardApiClient
                 'search' => $filters['search'] ?? null,
                 'status' => $filters['status'] ?? null,
                 'type' => $filters['type'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
                 'limit' => 500,
             ], fn ($value) => filled($value)));
 
@@ -1483,22 +1540,54 @@ class DashboardApiClient
     }
 
     /**
+     * @param array<string, mixed> $filters
+     *
+     * @throws RequestException
+     */
+    public function exportClaims(array $filters): Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->get('/dashboard/claims/export', array_filter([
+                'country' => $filters['country'] ?? null,
+                'search' => $filters['search'] ?? null,
+                'status' => $filters['status'] ?? null,
+                'type' => $filters['type'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response;
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @param array<string, mixed> $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
      */
-    public function createClaim(array $data, array $actor = []): array
+    public function createClaim(array $data, array $actor = [], array $photos = []): array
     {
-        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
             ->withToken((string) config('stj.api.dashboard_token'))
-            ->acceptJson()
-            ->post('/dashboard/claims', [
-                ...$data,
-                'actor' => $actor,
-            ]);
+            ->acceptJson();
+
+        foreach ($photos as $photo) {
+            if ($photo instanceof UploadedFile) {
+                $request = $request->attach('photos[]', fopen($photo->getRealPath(), 'rb'), $photo->getClientOriginalName());
+            }
+        }
+
+        $response = $request->post('/dashboard/claims', [
+            ...$data,
+            'actor' => $actor,
+        ]);
 
         $response->throw();
 
@@ -1512,16 +1601,23 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
-    public function updateClaim(int $claim, array $data, array $actor = []): array
+    public function updateClaim(int $claim, array $data, array $actor = [], array $photos = []): array
     {
-        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
             ->withToken((string) config('stj.api.dashboard_token'))
-            ->acceptJson()
-            ->post("/dashboard/claims/{$claim}", [
-                ...$data,
-                'actor' => $actor,
-            ]);
+            ->acceptJson();
+
+        foreach ($photos as $photo) {
+            if ($photo instanceof UploadedFile) {
+                $request = $request->attach('photos[]', fopen($photo->getRealPath(), 'rb'), $photo->getClientOriginalName());
+            }
+        }
+
+        $response = $request->post("/dashboard/claims/{$claim}", [
+            ...$data,
+            'actor' => $actor,
+        ]);
 
         $response->throw();
 

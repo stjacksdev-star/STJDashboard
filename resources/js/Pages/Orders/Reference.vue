@@ -23,15 +23,22 @@ const lineSaving = ref(false);
 const lineError = ref('');
 const productValidation = ref(null);
 const lineForm = ref(defaultLineForm());
+const showDataModal = ref(false);
+const dataSaving = ref(false);
+const dataError = ref('');
+const dataForm = ref(defaultDataForm());
 const showProcessModal = ref(false);
 const processSaving = ref(false);
 const processError = ref('');
 const processForm = ref({
     ticket: '',
+    refundObservation: '',
 });
 const showDeliverModal = ref(false);
 const deliverSaving = ref(false);
 const deliverError = ref('');
+const packedSaving = ref(false);
+const actionError = ref('');
 const showRouteModal = ref(false);
 const routeSaving = ref(false);
 const routeError = ref('');
@@ -64,7 +71,14 @@ const orderStoreCode = computed(() => String(order.value?.storePickup?.storeCode
 const normalizedOrderStoreCode = computed(() => normalizeStoreCode(orderStoreCode.value));
 const isSameSessionStore = computed(() => !hasAssignedStore.value || normalizedOrderStoreCode.value === normalizedSessionStoreCode.value);
 const canEditProducts = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value);
+const canEditOrderData = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value);
 const canProcessCurrentOrder = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value && !editingLineId.value);
+const canMarkPackedCurrentOrder = computed(() =>
+    order.value?.status === 'RECIBIDO'
+    && paymentIsCash.value
+    && canProcessOrders.value
+    && !editingLineId.value,
+);
 const canMarkRouteCurrentOrder = computed(() =>
     order.value?.checkout === 'DOMICILIO'
     && order.value?.status === 'PREPARADO'
@@ -239,6 +253,59 @@ function cancelLineEdit() {
     lineForm.value = defaultLineForm();
 }
 
+function openDataModal() {
+    dataError.value = '';
+    dataForm.value = {
+        email: order.value?.customer?.email || '',
+        phone: order.value?.customer?.phoneRaw || order.value?.customer?.phone || '',
+        whatsapp: order.value?.customer?.whatsappRaw || order.value?.customer?.whatsapp || '',
+        billingAddress: order.value?.customer?.billingAddressRaw || order.value?.customer?.billingAddress || '',
+        shippingAddress: order.value?.shipping?.addressRaw || order.value?.shipping?.address || '',
+        shippingReference: order.value?.shipping?.reference || '',
+    };
+    showDataModal.value = true;
+}
+
+function closeDataModal() {
+    if (dataSaving.value) {
+        return;
+    }
+
+    showDataModal.value = false;
+    dataError.value = '';
+    dataForm.value = defaultDataForm();
+}
+
+async function saveOrderData() {
+    if (!order.value) {
+        return;
+    }
+
+    dataSaving.value = true;
+    dataError.value = '';
+
+    try {
+        const response = await window.axios.post('/dashboard-api/orders/data', {
+            country: form.value.country,
+            reference: order.value.reference,
+            email: dataForm.value.email,
+            phone: dataForm.value.phone,
+            whatsapp: dataForm.value.whatsapp,
+            billingAddress: dataForm.value.billingAddress,
+            shippingAddress: dataForm.value.shippingAddress,
+            shippingReference: dataForm.value.shippingReference,
+        });
+
+        orderData.value = response.data.data;
+        showDataModal.value = false;
+        dataForm.value = defaultDataForm();
+    } catch (exception) {
+        dataError.value = exception.response?.data?.message || 'No fue posible actualizar los datos del pedido.';
+    } finally {
+        dataSaving.value = false;
+    }
+}
+
 async function validateLineProduct() {
     if (!lineForm.value.sku || !form.value.country) {
         productValidation.value = null;
@@ -310,6 +377,7 @@ async function saveLineEdit() {
 function openProcessModal() {
     processError.value = '';
     processForm.value.ticket = order.value?.payment?.ticket || '';
+    processForm.value.refundObservation = order.value?.refund?.observation || '';
     showProcessModal.value = true;
 }
 
@@ -328,6 +396,11 @@ async function processOrder() {
         return;
     }
 
+    if (processRefund.value >= 0.01 && processForm.value.refundObservation.trim().length < 20) {
+        processError.value = 'Debe ingresar una observacion de devolucion de al menos 20 caracteres.';
+        return;
+    }
+
     processSaving.value = true;
     processError.value = '';
 
@@ -336,6 +409,7 @@ async function processOrder() {
             country: form.value.country,
             reference: order.value.reference,
             ticket: processForm.value.ticket,
+            refundObservation: processForm.value.refundObservation,
         });
 
         orderData.value = response.data.data;
@@ -391,6 +465,29 @@ async function deliverOrder() {
     }
 }
 
+async function markPackedForPickup() {
+    if (!order.value || !window.confirm(`Marcar el pedido ${order.value.reference} como EMPACADO-ENTREGA?`)) {
+        return;
+    }
+
+    packedSaving.value = true;
+    actionError.value = '';
+
+    try {
+        const response = await window.axios.post('/dashboard-api/orders/packed-pickup', {
+            country: form.value.country,
+            reference: order.value.reference,
+        });
+
+        orderData.value = response.data.data;
+        cancelLineEdit();
+    } catch (exception) {
+        actionError.value = exception.response?.data?.message || 'No fue posible marcar el pedido como preparado.';
+    } finally {
+        packedSaving.value = false;
+    }
+}
+
 function openRouteModal() {
     routeError.value = '';
     routePromptAfterProcess.value = false;
@@ -438,6 +535,17 @@ function defaultLineForm() {
         size: '',
         quantity: 1,
         discount: 0,
+    };
+}
+
+function defaultDataForm() {
+    return {
+        email: '',
+        phone: '',
+        whatsapp: '',
+        billingAddress: '',
+        shippingAddress: '',
+        shippingReference: '',
     };
 }
 
@@ -661,9 +769,19 @@ onMounted(() => {
                                 </p>
                             </div>
 
-                            <div class="app-surface-soft rounded-md border px-4 py-3 text-sm">
-                                <span class="app-muted">Estado:</span>
-                                <span class="app-text ml-2 font-semibold">{{ order.status }}</span>
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <button
+                                    v-if="canEditOrderData"
+                                    type="button"
+                                    class="app-primary inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold shadow-sm"
+                                    @click="openDataModal"
+                                >
+                                    Editar datos
+                                </button>
+                                <div class="app-surface-soft rounded-md border px-4 py-3 text-sm">
+                                    <span class="app-muted">Estado:</span>
+                                    <span class="app-text ml-2 font-semibold">{{ order.status }}</span>
+                                </div>
                             </div>
                         </div>
 
@@ -1065,16 +1183,7 @@ onMounted(() => {
                                     <td class="app-text px-3 py-2 text-right">{{ product.billedQuantity ?? '-' }}</td>
                                     <td class="app-text px-3 py-2 text-right">{{ currency }} {{ formatMoney(product.price) }}</td>
                                     <td class="app-text px-3 py-2 text-right">
-                                        <input
-                                            v-if="editingLineId === product.id"
-                                            v-model="lineForm.discount"
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            step="0.01"
-                                            class="app-surface app-text h-9 w-20 rounded-md border px-2 text-right text-sm outline-none"
-                                        />
-                                        <span v-else>{{ formatMoney(product.discount) }}%</span>
+                                        <span>{{ formatMoney(product.discount) }}%</span>
                                     </td>
                                     <td class="app-text px-3 py-2 text-right">{{ formatMoney(product.billedDiscount) }}%</td>
                                     <td class="app-text px-3 py-2 text-right">{{ productSubtotal(product, 'chargedSubtotal') }}</td>
@@ -1090,7 +1199,10 @@ onMounted(() => {
                             </tfoot>
                         </table>
                     </div>
-                    <div v-if="canProcessCurrentOrder || canMarkRouteCurrentOrder || canDeliverCurrentOrder" class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <div v-if="actionError" class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                        {{ actionError }}
+                    </div>
+                    <div v-if="canProcessCurrentOrder || canMarkPackedCurrentOrder || canMarkRouteCurrentOrder || canDeliverCurrentOrder" class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
                         <button
                             v-if="canMarkRouteCurrentOrder"
                             type="button"
@@ -1108,6 +1220,15 @@ onMounted(() => {
                             Entregar
                         </button>
                         <button
+                            v-if="canMarkPackedCurrentOrder"
+                            type="button"
+                            class="app-primary inline-flex h-10 items-center justify-center rounded-md px-5 text-sm font-semibold shadow-sm disabled:opacity-60"
+                            :disabled="packedSaving"
+                            @click="markPackedForPickup"
+                        >
+                            {{ packedSaving ? 'Marcando...' : 'Preparado' }}
+                        </button>
+                        <button
                             v-if="canProcessCurrentOrder"
                             type="button"
                             class="app-primary inline-flex h-10 items-center justify-center rounded-md px-5 text-sm font-semibold shadow-sm"
@@ -1118,6 +1239,113 @@ onMounted(() => {
                     </div>
                 </div>
             </template>
+
+            <div
+                v-if="showDataModal && order"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="app-surface max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border shadow-xl">
+                    <div class="app-border-soft flex items-start justify-between gap-4 border-b px-6 py-5">
+                        <div>
+                            <p class="app-primary-text text-xs font-semibold uppercase">Editar datos</p>
+                            <h2 class="app-text mt-1 text-xl font-semibold">{{ order.reference }}</h2>
+                        </div>
+                        <button
+                            type="button"
+                            class="app-surface-soft app-text flex h-9 w-9 items-center justify-center rounded-md border text-xl"
+                            :disabled="dataSaving"
+                            @click="closeDataModal"
+                        >
+                            x
+                        </button>
+                    </div>
+
+                    <form class="px-6 py-5" @submit.prevent="saveOrderData">
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="block text-sm font-semibold sm:col-span-2">
+                                <span class="app-muted">Correo</span>
+                                <input
+                                    v-model="dataForm.email"
+                                    type="email"
+                                    class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                    maxlength="50"
+                                    required
+                                />
+                            </label>
+                            <label class="block text-sm font-semibold">
+                                <span class="app-muted">Telefono</span>
+                                <input
+                                    v-model="dataForm.phone"
+                                    type="text"
+                                    class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                    maxlength="30"
+                                    required
+                                />
+                            </label>
+                            <label class="block text-sm font-semibold">
+                                <span class="app-muted">Whatsapp</span>
+                                <input
+                                    v-model="dataForm.whatsapp"
+                                    type="text"
+                                    class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                                    maxlength="30"
+                                />
+                            </label>
+                            <label class="block text-sm font-semibold sm:col-span-2">
+                                <span class="app-muted">Direccion de facturacion</span>
+                                <textarea
+                                    v-model="dataForm.billingAddress"
+                                    class="app-surface app-text mt-2 min-h-24 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-4"
+                                    maxlength="200"
+                                    required
+                                ></textarea>
+                            </label>
+                            <template v-if="order.checkout === 'DOMICILIO'">
+                                <label class="block text-sm font-semibold sm:col-span-2">
+                                    <span class="app-muted">Direccion de envio</span>
+                                    <textarea
+                                        v-model="dataForm.shippingAddress"
+                                        class="app-surface app-text mt-2 min-h-24 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-4"
+                                        maxlength="200"
+                                    ></textarea>
+                                </label>
+                                <label class="block text-sm font-semibold sm:col-span-2">
+                                    <span class="app-muted">Punto referencia</span>
+                                    <textarea
+                                        v-model="dataForm.shippingReference"
+                                        class="app-surface app-text mt-2 min-h-20 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-4"
+                                        maxlength="200"
+                                    ></textarea>
+                                </label>
+                            </template>
+                        </div>
+
+                        <div v-if="dataError" class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                            {{ dataError }}
+                        </div>
+
+                        <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <button
+                                type="button"
+                                class="app-surface-soft app-text inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-semibold"
+                                :disabled="dataSaving"
+                                @click="closeDataModal"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                class="app-primary inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold shadow-sm disabled:opacity-60"
+                                :disabled="dataSaving"
+                            >
+                                {{ dataSaving ? 'Guardando...' : 'Guardar datos' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <div
                 v-if="showProcessModal && order"
@@ -1179,6 +1407,20 @@ onMounted(() => {
                                 maxlength="100"
                                 required
                             />
+                        </label>
+
+                        <label v-if="processRefund >= 0.01" class="mt-5 block text-sm font-semibold">
+                            <span class="app-muted">Motivo u observacion de devolucion</span>
+                            <textarea
+                                v-model="processForm.refundObservation"
+                                class="app-surface app-text mt-2 min-h-24 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-4"
+                                minlength="20"
+                                maxlength="2000"
+                                required
+                            ></textarea>
+                            <span class="app-muted mt-1 block text-xs">
+                                Minimo 20 caracteres. Actual: {{ processForm.refundObservation.trim().length }}
+                            </span>
                         </label>
 
                         <div v-if="processError" class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">

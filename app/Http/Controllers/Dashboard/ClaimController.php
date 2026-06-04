@@ -9,6 +9,7 @@ use App\Support\DashboardAccess;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
 class ClaimController extends Controller
@@ -65,6 +66,8 @@ class ClaimController extends Controller
             'search' => ['nullable', 'string', 'max:150'],
             'status' => ['nullable', Rule::in(self::STATUSES)],
             'type' => ['nullable', Rule::in(self::TYPES)],
+            'startDate' => ['nullable', 'date'],
+            'endDate' => ['nullable', 'date', 'after_or_equal:startDate'],
         ]);
         $validated['country'] = $this->resolveCountry($request, $countryAccess, $validated['country'] ?? null);
 
@@ -82,6 +85,40 @@ class ClaimController extends Controller
         }
     }
 
+    public function export(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): Response|JsonResponse
+    {
+        if (! $this->canUseClaims($request)) {
+            return $this->forbidden();
+        }
+
+        $validated = $request->validate([
+            'country' => ['nullable', 'integer', 'min:1'],
+            'search' => ['nullable', 'string', 'max:150'],
+            'status' => ['nullable', Rule::in(self::STATUSES)],
+            'type' => ['nullable', Rule::in(self::TYPES)],
+            'startDate' => ['required', 'date'],
+            'endDate' => ['required', 'date', 'after_or_equal:startDate'],
+        ]);
+        $validated['country'] = $this->resolveCountry($request, $countryAccess, $validated['country'] ?? null);
+
+        if ($validated['country'] === null) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            $response = $api->exportClaims($validated);
+            $disposition = $response->header('Content-Disposition') ?: 'attachment; filename="reclamos.xlsx"';
+
+            return response($response->body(), 200, [
+                'Content-Type' => $response->header('Content-Type') ?: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => $disposition,
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]);
+        } catch (RequestException $exception) {
+            return $this->apiError($exception, 'No fue posible exportar los reclamos desde stj-api.');
+        }
+    }
+
     public function store(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! $this->canUseClaims($request)) {
@@ -89,6 +126,9 @@ class ClaimController extends Controller
         }
 
         $validated = $this->validateClaim($request);
+        $photos = $request->file('photos', []);
+        unset($validated['photos']);
+
         if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
             return $this->countryForbidden();
         }
@@ -97,7 +137,7 @@ class ClaimController extends Controller
         try {
             return response()->json([
                 'ok' => true,
-                'data' => $api->createClaim($validated, $this->actor($request)),
+                'data' => $api->createClaim($validated, $this->actor($request), $photos),
                 'message' => 'Reclamo creado correctamente.',
             ]);
         } catch (RequestException $exception) {
@@ -112,6 +152,9 @@ class ClaimController extends Controller
         }
 
         $validated = $this->validateClaim($request);
+        $photos = $request->file('photos', []);
+        unset($validated['photos']);
+
         if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
             return $this->countryForbidden();
         }
@@ -119,7 +162,7 @@ class ClaimController extends Controller
         try {
             return response()->json([
                 'ok' => true,
-                'data' => $api->updateClaim($claim, $validated, $this->actor($request)),
+                'data' => $api->updateClaim($claim, $validated, $this->actor($request), $photos),
                 'message' => 'Reclamo actualizado correctamente.',
             ]);
         } catch (RequestException $exception) {
@@ -160,7 +203,9 @@ class ClaimController extends Controller
             'customerPhone' => ['nullable', 'string', 'max:30'],
             'customerDui' => ['nullable', 'string', 'max:20'],
             'type' => ['required', Rule::in(self::TYPES)],
+            'typeOther' => ['nullable', 'required_if:type,otro,otros', 'string', 'max:255'],
             'origin' => ['required', Rule::in(self::ORIGINS)],
+            'originOther' => ['nullable', 'required_if:origin,otro,otros', 'string', 'max:255'],
             'responsibleArea' => ['required', Rule::in(self::AREAS)],
             'store' => ['nullable', 'string', 'max:100'],
             'description' => ['required', 'string'],
@@ -171,6 +216,8 @@ class ClaimController extends Controller
             'closedAt' => ['nullable', 'date'],
             'registeredBy' => ['nullable', 'string', 'max:255'],
             'assignedTo' => ['nullable', 'string', 'max:255'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['image', 'max:8192'],
         ]);
     }
 

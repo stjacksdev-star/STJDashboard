@@ -417,6 +417,47 @@ class OrderController extends Controller
         }
     }
 
+    public function updateData(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PROCESAR_PEDIDO')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para editar datos del pedido.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'reference' => ['required', 'string', 'max:60'],
+            'email' => ['required', 'email', 'max:50'],
+            'phone' => ['required', 'string', 'max:30'],
+            'whatsapp' => ['nullable', 'string', 'max:30'],
+            'billingAddress' => ['required', 'string', 'max:200'],
+            'shippingAddress' => ['nullable', 'string', 'max:200'],
+            'shippingReference' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->updateOrderData($validated, $this->actor($request)),
+                'message' => 'Datos del pedido actualizados correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible actualizar los datos del pedido en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     public function process(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PROCESAR_PEDIDO')) {
@@ -430,6 +471,7 @@ class OrderController extends Controller
             'country' => ['required', 'string', 'max:3'],
             'reference' => ['required', 'string', 'max:60'],
             'ticket' => ['required', 'string', 'max:100'],
+            'refundObservation' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $user = (array) $request->session()->get('stj.user', []);
@@ -445,6 +487,7 @@ class OrderController extends Controller
                     $validated['country'],
                     $validated['reference'],
                     $validated['ticket'],
+                    $validated['refundObservation'] ?? null,
                     $this->actor($request),
                 ),
                 'message' => 'Pedido procesado correctamente.',
@@ -492,6 +535,45 @@ class OrderController extends Controller
             return response()->json([
                 'ok' => false,
                 'message' => $exception->response?->json('message') ?: 'No fue posible entregar el pedido en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function markPackedForPickup(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PROCESAR_PEDIDO')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para preparar pedidos.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'reference' => ['required', 'string', 'max:60'],
+        ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->markOrderPackedForPickup(
+                    $validated['country'],
+                    $validated['reference'],
+                    $this->actor($request),
+                ),
+                'message' => 'Pedido marcado como preparado correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible marcar el pedido como preparado en stj-api.',
                 'errors' => $exception->response?->json('errors') ?: [],
             ], $exception->response?->status() ?: 502);
         }

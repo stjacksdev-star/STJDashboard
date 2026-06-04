@@ -110,6 +110,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.appointments.index');
     Route::get('/dashboard-api/claims', [ClaimController::class, 'index'])
         ->name('dashboard-api.claims.index');
+    Route::get('/dashboard-api/claims/export', [ClaimController::class, 'export'])
+        ->name('dashboard-api.claims.export');
     Route::post('/dashboard-api/claims', [ClaimController::class, 'store'])
         ->name('dashboard-api.claims.store');
     Route::post('/dashboard-api/claims/{claim}', [ClaimController::class, 'update'])
@@ -162,10 +164,14 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.reports.accounting.sales-by-store.pdf');
     Route::get('/dashboard-api/orders/product', [OrderController::class, 'product'])
         ->name('dashboard-api.orders.product');
+    Route::post('/dashboard-api/orders/data', [OrderController::class, 'updateData'])
+        ->name('dashboard-api.orders.data.update');
     Route::post('/dashboard-api/orders/lines/{line}', [OrderController::class, 'updateLine'])
         ->name('dashboard-api.orders.lines.update');
     Route::post('/dashboard-api/orders/process', [OrderController::class, 'process'])
         ->name('dashboard-api.orders.process');
+    Route::post('/dashboard-api/orders/packed-pickup', [OrderController::class, 'markPackedForPickup'])
+        ->name('dashboard-api.orders.packed-pickup');
     Route::post('/dashboard-api/orders/route', [OrderController::class, 'markInRoute'])
         ->name('dashboard-api.orders.route');
     Route::post('/dashboard-api/orders/deliver', [OrderController::class, 'deliver'])

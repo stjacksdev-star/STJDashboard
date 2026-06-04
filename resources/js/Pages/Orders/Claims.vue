@@ -11,6 +11,7 @@ const page = usePage();
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
+const exporting = ref(false);
 const error = ref('');
 const formError = ref('');
 const errors = ref({});
@@ -27,11 +28,14 @@ const filters = ref({
     search: '',
     status: '',
     type: '',
+    startDate: '',
+    endDate: '',
 });
 const tableKey = ref(0);
 const showModal = ref(false);
 const editingClaim = ref(null);
 const form = ref(defaultForm());
+const photoInput = ref(null);
 
 const columns = [
     { data: 'managementNumber', title: 'Gestion', width: '145px' },
@@ -41,6 +45,7 @@ const columns = [
     { data: 'orderLabel', title: 'Pedido/STJ', width: '120px' },
     { data: 'typeLabel', title: 'Tipo', width: '145px' },
     { data: 'responsibleAreaLabel', title: 'Area', width: '140px' },
+    { data: 'photosLabel', title: 'Fotos', width: '80px', className: 'dt-right' },
     { data: 'statusHtml', title: 'Estado', orderable: false, width: '130px' },
     { data: 'actions', title: 'Acciones', orderable: false, searchable: false, className: 'dt-actions', width: '96px' },
 ];
@@ -74,6 +79,7 @@ const rows = computed(() =>
         registeredLabel: formatDate(claim.registeredAt),
         customerLabel: customerHtml(claim),
         orderLabel: orderHtml(claim),
+        photosLabel: claim.photosCount || 0,
         statusHtml: statusHtml(claim),
         actions: actionsHtml(claim.id),
     })),
@@ -109,7 +115,7 @@ async function saveClaim() {
     success.value = '';
 
     const creating = ! editingClaim.value;
-    const payload = normalizePayload(form.value);
+    const payload = formDataPayload(form.value);
     const url = editingClaim.value
         ? `/dashboard-api/claims/${editingClaim.value.id}`
         : '/dashboard-api/claims';
@@ -121,6 +127,7 @@ async function saveClaim() {
         showModal.value = false;
         editingClaim.value = null;
         form.value = defaultForm();
+        clearPhotoInput();
         await fetchClaims();
 
         if (creating && savedClaim.managementNumber) {
@@ -158,9 +165,27 @@ async function deleteClaim(claim) {
     }
 }
 
+function exportClaims() {
+    error.value = '';
+
+    if (! filters.value.startDate || ! filters.value.endDate) {
+        error.value = 'Seleccione fecha inicial y fecha final para exportar.';
+        return;
+    }
+
+    const params = new URLSearchParams(cleanParams(filters.value));
+    exporting.value = true;
+    window.location.href = `/dashboard-api/claims/export?${params.toString()}`;
+
+    window.setTimeout(() => {
+        exporting.value = false;
+    }, 1200);
+}
+
 function openCreateModal() {
     editingClaim.value = null;
     form.value = defaultForm();
+    clearPhotoInput();
     formError.value = '';
     errors.value = {};
     showModal.value = true;
@@ -178,7 +203,9 @@ function openEditModal(claim) {
         customerPhone: claim.customerPhone || '',
         customerDui: claim.customerDui || '',
         type: claim.type || 'otro',
+        typeOther: claim.typeOther || '',
         origin: claim.origin || 'web',
+        originOther: claim.originOther || '',
         responsibleArea: claim.responsibleArea || 'atencion_cliente',
         store: claim.store || '',
         description: claim.description || '',
@@ -188,7 +215,9 @@ function openEditModal(claim) {
         resolvedAt: toInputDateTime(claim.resolvedAt),
         closedAt: toInputDateTime(claim.closedAt),
         assignedTo: claim.assignedTo ?? '',
+        photos: [],
     };
+    clearPhotoInput();
     formError.value = '';
     errors.value = {};
     showModal.value = true;
@@ -228,7 +257,9 @@ function defaultForm() {
         customerPhone: '',
         customerDui: '',
         type: 'otro',
+        typeOther: '',
         origin: 'web',
+        originOther: '',
         responsibleArea: 'atencion_cliente',
         store: '',
         description: '',
@@ -238,7 +269,12 @@ function defaultForm() {
         resolvedAt: '',
         closedAt: '',
         assignedTo: '',
+        photos: [],
     };
+}
+
+function onPhotoChange(event) {
+    form.value.photos = Array.from(event.target.files || []);
 }
 
 function allowedCountries() {
@@ -261,14 +297,33 @@ function countryLabel(countryId) {
     return country ? `${country.code} - ${country.name}` : (countryId || 'N/D');
 }
 
-function normalizePayload(values) {
-    return {
+function formDataPayload(values) {
+    const payload = new FormData();
+    const normalized = {
         ...values,
-        assignedTo: values.assignedTo || null,
-        registeredAt: values.registeredAt || null,
-        resolvedAt: values.resolvedAt || null,
-        closedAt: values.closedAt || null,
+        assignedTo: values.assignedTo || '',
+        registeredAt: values.registeredAt || '',
+        resolvedAt: values.resolvedAt || '',
+        closedAt: values.closedAt || '',
     };
+
+    Object.entries(normalized).forEach(([key, value]) => {
+        if (key !== 'photos') {
+            payload.append(key, value ?? '');
+        }
+    });
+
+    values.photos.forEach((photo) => {
+        payload.append('photos[]', photo);
+    });
+
+    return payload;
+}
+
+function clearPhotoInput() {
+    if (photoInput.value) {
+        photoInput.value.value = '';
+    }
 }
 
 function cleanParams(values) {
@@ -326,6 +381,26 @@ function fieldError(field) {
     return Array.isArray(errors.value?.[field]) ? errors.value[field][0] : '';
 }
 
+function isOther(value) {
+    return ['otro', 'otros'].includes(String(value || '').trim());
+}
+
+function photoName(photo) {
+    return photo?.originalName || photo?.url?.split('/').pop() || 'Foto';
+}
+
+function fileSizeLabel(bytes) {
+    if (! bytes) {
+        return '';
+    }
+
+    if (bytes < 1024 * 1024) {
+        return `${Math.round(bytes / 1024)} KB`;
+    }
+
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function firstError(errorBag) {
     if (! errorBag) {
         return '';
@@ -374,7 +449,7 @@ function escapeHtml(value) {
                         <h1 class="app-text mt-2 text-2xl font-bold">Reclamos</h1>
                     </div>
 
-                    <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[860px] lg:grid-cols-4">
+                    <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[980px] lg:grid-cols-6">
                         <label class="block">
                             <span class="app-muted text-sm font-medium">Pais</span>
                             <select v-model="filters.country" class="stj-input mt-2" required>
@@ -404,10 +479,29 @@ function escapeHtml(value) {
                                 <option v-for="type in options.types" :key="type.value" :value="type.value">{{ type.label }}</option>
                             </select>
                         </label>
+
+                        <label class="block">
+                            <span class="app-muted text-sm font-medium">Fecha inicial</span>
+                            <input v-model="filters.startDate" type="date" class="stj-input mt-2">
+                        </label>
+
+                        <label class="block">
+                            <span class="app-muted text-sm font-medium">Fecha final</span>
+                            <input v-model="filters.endDate" type="date" class="stj-input mt-2">
+                        </label>
                     </div>
                 </div>
 
                 <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        class="inline-flex h-11 items-center justify-center rounded-md border border-emerald-600 px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        :disabled="exporting"
+                        @click="exportClaims"
+                    >
+                        {{ exporting ? 'Exportando...' : 'Excel' }}
+                    </button>
+
                     <button
                         type="button"
                         class="inline-flex h-11 items-center justify-center rounded-md border px-4 text-sm font-semibold transition"
@@ -545,6 +639,16 @@ function escapeHtml(value) {
                                     <option v-for="type in options.types" :key="type.value" :value="type.value">{{ type.label }}</option>
                                 </select>
                                 <span v-if="fieldError('type')" class="stj-field-error">{{ fieldError('type') }}</span>
+                                <input
+                                    v-if="isOther(form.type)"
+                                    v-model.trim="form.typeOther"
+                                    maxlength="255"
+                                    type="text"
+                                    class="stj-input mt-2"
+                                    placeholder="Especifique el tipo"
+                                    required
+                                >
+                                <span v-if="fieldError('typeOther')" class="stj-field-error">{{ fieldError('typeOther') }}</span>
                             </label>
 
                             <label class="block">
@@ -553,6 +657,16 @@ function escapeHtml(value) {
                                     <option v-for="origin in options.origins" :key="origin.value" :value="origin.value">{{ origin.label }}</option>
                                 </select>
                                 <span v-if="fieldError('origin')" class="stj-field-error">{{ fieldError('origin') }}</span>
+                                <input
+                                    v-if="isOther(form.origin)"
+                                    v-model.trim="form.originOther"
+                                    maxlength="255"
+                                    type="text"
+                                    class="stj-input mt-2"
+                                    placeholder="Especifique el origen"
+                                    required
+                                >
+                                <span v-if="fieldError('originOther')" class="stj-field-error">{{ fieldError('originOther') }}</span>
                             </label>
 
                             <label class="block">
@@ -597,6 +711,53 @@ function escapeHtml(value) {
                             <textarea v-model.trim="form.response" rows="4" class="stj-input mt-2"></textarea>
                             <span v-if="fieldError('response')" class="stj-field-error">{{ fieldError('response') }}</span>
                         </label>
+
+                        <section class="mt-4 rounded-md border p-4" style="border-color: var(--stj-border);">
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h3 class="app-text text-base font-semibold">Fotos</h3>
+                                    <p class="app-muted text-sm">Puede adjuntar una o mas imagenes del reclamo.</p>
+                                </div>
+                                <span v-if="form.photos.length" class="app-primary-text text-sm font-semibold">
+                                    {{ form.photos.length }} nuevas
+                                </span>
+                            </div>
+
+                            <input
+                                ref="photoInput"
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                class="stj-input mt-3"
+                                @change="onPhotoChange"
+                            >
+                            <span v-if="fieldError('photos')" class="stj-field-error">{{ fieldError('photos') }}</span>
+                            <span v-if="fieldError('photos.0')" class="stj-field-error">{{ fieldError('photos.0') }}</span>
+
+                            <div v-if="form.photos.length" class="mt-3 grid gap-2 sm:grid-cols-2">
+                                <div v-for="photo in form.photos" :key="`${photo.name}-${photo.size}-${photo.lastModified}`" class="stj-photo-row">
+                                    <span class="truncate">{{ photo.name }}</span>
+                                    <span>{{ fileSizeLabel(photo.size) }}</span>
+                                </div>
+                            </div>
+
+                            <div v-if="editingClaim?.photos?.length" class="mt-4">
+                                <p class="app-muted text-sm font-semibold">Fotos guardadas</p>
+                                <div class="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    <a
+                                        v-for="photo in editingClaim.photos"
+                                        :key="photo.id"
+                                        :href="photo.url"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="stj-photo-card"
+                                    >
+                                        <img :src="photo.url" :alt="photoName(photo)">
+                                        <span>{{ photoName(photo) }}</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </section>
 
                         <div class="mt-4 grid gap-4 lg:grid-cols-2">
                             <label class="block">
@@ -708,6 +869,53 @@ function escapeHtml(value) {
     display: block;
     font-size: 0.78rem;
     margin-top: 0.35rem;
+}
+
+.stj-photo-row {
+    align-items: center;
+    background: var(--stj-surface-soft);
+    border: 1px solid var(--stj-border);
+    border-radius: 0.375rem;
+    color: var(--stj-text);
+    display: flex;
+    font-size: 0.82rem;
+    gap: 0.75rem;
+    justify-content: space-between;
+    padding: 0.55rem 0.7rem;
+}
+
+.stj-photo-row span:last-child {
+    color: var(--stj-muted);
+    flex: 0 0 auto;
+}
+
+.stj-photo-card {
+    border: 1px solid var(--stj-border);
+    border-radius: 0.375rem;
+    color: var(--stj-text);
+    display: grid;
+    gap: 0.5rem;
+    overflow: hidden;
+    padding: 0.5rem;
+}
+
+.stj-photo-card:hover {
+    border-color: var(--stj-primary);
+}
+
+.stj-photo-card img {
+    aspect-ratio: 4 / 3;
+    background: var(--stj-surface-soft);
+    border-radius: 0.25rem;
+    object-fit: cover;
+    width: 100%;
+}
+
+.stj-photo-card span {
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .stj-row-actions {
