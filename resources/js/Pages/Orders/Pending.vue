@@ -157,6 +157,10 @@ async function fetchStoreSummary() {
 
 async function loadPage() {
     await fetchStoreSummary();
+
+    if (!showFilters.value) {
+        await fetchPendingOrders();
+    }
 }
 
 function submitFilters() {
