@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Services\StjApi\DashboardApiClient;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,8 @@ class ProductMasterController extends Controller
 
     public function importPhotos(Request $request, DashboardApiClient $api): JsonResponse
     {
+        @set_time_limit(max(900, (int) config('stj.api.photo_import_timeout')));
+
         $validated = $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:20480'],
         ]);
@@ -51,6 +54,12 @@ class ProductMasterController extends Controller
                 'data' => $api->importProductPhotos($validated['file']),
                 'message' => 'Importacion de fotografias finalizada.',
             ]);
+        } catch (ConnectionException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'La importacion de fotografias supero el tiempo de espera del dashboard. Puede que algunas fotos hayan terminado de subirse; intente con menos filas o aumente STJ_API_PHOTO_IMPORT_TIMEOUT.',
+                'errors' => [],
+            ], 504);
         } catch (RequestException $exception) {
             return $this->apiError($exception, 'No fue posible importar las fotografias en stj-api.');
         }

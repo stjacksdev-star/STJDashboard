@@ -170,6 +170,7 @@ async function importPhotos() {
     try {
         const response = await window.axios.post('/dashboard-api/products/master/photos/import', payload, {
             headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 900000,
         });
 
         photoImportResult.value = response.data.data;
@@ -348,6 +349,7 @@ function printImportLog(result = importResult.value, title = 'Log importacion pr
                     ${summary.spaces !== undefined ? `<div class="card"><span>Spaces</span><strong>${escapeHtml(summary.spaces ?? 0)}</strong></div>` : ''}
                     ${summary.local !== undefined ? `<div class="card"><span>Local</span><strong>${escapeHtml(summary.local ?? 0)}</strong></div>` : ''}
                     ${summary.omittedByLimit !== undefined ? `<div class="card"><span>Fuera limite</span><strong>${escapeHtml(summary.omittedByLimit ?? 0)}</strong></div>` : ''}
+                    ${summary.durationLabel !== undefined ? `<div class="card"><span>Duracion</span><strong>${escapeHtml(summary.durationLabel ?? '')}</strong></div>` : ''}
                 </div>
                 <table>
                     <thead>
@@ -388,6 +390,10 @@ function resultCards(result, includeStorage = false) {
         cards.push(['Spaces', summary.spaces || 0]);
         cards.push(['Local', summary.local || 0]);
         cards.push(['Fuera limite', summary.omittedByLimit || 0]);
+    }
+
+    if (summary.durationLabel) {
+        cards.push(['Duracion', summary.durationLabel]);
     }
 
     return cards;

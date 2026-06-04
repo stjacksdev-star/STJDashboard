@@ -13,5 +13,6 @@ return [
         'base_url' => env('STJ_API_BASE_URL', 'http://127.0.0.1:8002/api'),
         'dashboard_token' => env('STJ_API_DASHBOARD_TOKEN'),
         'timeout' => (int) env('STJ_API_TIMEOUT', 15),
+        'photo_import_timeout' => (int) env('STJ_API_PHOTO_IMPORT_TIMEOUT', 900),
     ],
 ];

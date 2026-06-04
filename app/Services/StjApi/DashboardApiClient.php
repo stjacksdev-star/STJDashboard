@@ -1320,7 +1320,7 @@ class DashboardApiClient
     public function importProductPhotos(UploadedFile $file): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
-            ->timeout(max(180, (int) config('stj.api.timeout')))
+            ->timeout(max(900, (int) config('stj.api.photo_import_timeout')))
             ->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()
             ->attach('file', fopen($file->getRealPath(), 'rb'), $file->getClientOriginalName())
