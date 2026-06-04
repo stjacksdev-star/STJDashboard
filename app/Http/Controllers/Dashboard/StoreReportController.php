@@ -17,10 +17,10 @@ class StoreReportController extends Controller
 {
     public function catalog(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
-        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_CORTE_VIRTUAL')) {
+        if (! $this->canUseStoreReportCatalog($request)) {
             return response()->json([
                 'ok' => false,
-                'message' => 'No tiene permiso para ver corte virtual.',
+                'message' => 'No tiene permiso para consultar catalogos de reportes de tienda.',
             ], 403);
         }
 
@@ -328,6 +328,26 @@ class StoreReportController extends Controller
     {
         return in_array('ROOT', $permissions, true)
             || in_array('INDICADORES_GENERICOS', $permissions, true);
+    }
+
+    private function canUseStoreReportCatalog(Request $request): bool
+    {
+        $user = $request->session()->get('stj.user');
+
+        foreach ([
+            'MENU_CORTE_VIRTUAL',
+            'MENU_REPO_VENTA',
+            'MENU_REPO_VENTA_PEDIDO',
+            'MENU_REPORTE_DOMICILIO',
+            'MENU_REPO_CONTA_1',
+            'MENU_CONTABILIDAD_3',
+        ] as $permission) {
+            if (DashboardAccess::can($user, $permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function countryForbidden(): JsonResponse
