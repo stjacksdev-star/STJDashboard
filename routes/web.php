@@ -156,6 +156,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.reports.store.pending-items');
     Route::get('/dashboard-api/reports/store/pending-items-by-order', [StoreReportController::class, 'pendingItemsByOrder'])
         ->name('dashboard-api.reports.store.pending-items-by-order');
+    Route::get('/dashboard-api/reports/store/home-delivery', [StoreReportController::class, 'homeDelivery'])
+        ->name('dashboard-api.reports.store.home-delivery');
+    Route::get('/dashboard-api/reports/store/home-delivery/export', [StoreReportController::class, 'homeDeliveryExport'])
+        ->name('dashboard-api.reports.store.home-delivery.export');
     Route::get('/dashboard-api/reports/accounting/3/count', [AccountingReportController::class, 'count3'])
         ->name('dashboard-api.reports.accounting.3.count');
     Route::get('/dashboard-api/reports/accounting/3/export', [AccountingReportController::class, 'export3'])
@@ -211,6 +215,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('reports.pending-items');
     Route::get('/reportes/articulos-pendientes-pedido', fn () => Inertia::render('Reports/PendingItemsByOrder'))
         ->name('reports.pending-items-by-order');
+    Route::get('/reportes/domicilio', fn () => Inertia::render('Reports/HomeDelivery'))
+        ->name('reports.home-delivery');
     Route::get('/reportes/contabilidad/venta-general-3', fn () => Inertia::render('Reports/Accounting3'))
         ->name('reports.accounting.3');
     Route::get('/reportes/contabilidad/venta-general', fn () => Inertia::render('Reports/AccountingSalesByStore'))

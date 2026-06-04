@@ -247,6 +247,80 @@ class StoreReportController extends Controller
         }
     }
 
+    public function homeDelivery(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPORTE_DOMICILIO')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para ver el reporte de domicilio.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'startDate' => ['required', 'date'],
+            'endDate' => ['required', 'date', 'after_or_equal:startDate'],
+        ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->storeHomeDelivery($validated),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible cargar el reporte de domicilio desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function homeDeliveryExport(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): Response|JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPORTE_DOMICILIO')) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No tiene permiso para exportar el reporte de domicilio.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'startDate' => ['required', 'date'],
+            'endDate' => ['required', 'date', 'after_or_equal:startDate'],
+        ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            $response = $api->exportStoreHomeDelivery($validated);
+            $disposition = $response->header('Content-Disposition') ?: 'attachment; filename="reporte-domicilio.xlsx"';
+
+            return response($response->body(), 200, [
+                'Content-Type' => $response->header('Content-Type') ?: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => $disposition,
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible exportar el reporte de domicilio desde stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     /**
      * @param array<int, string> $permissions
      */

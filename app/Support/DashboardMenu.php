@@ -53,6 +53,7 @@ class DashboardMenu
                         self::item('Corte Virtual', '/reportes/corte-virtual', permission: 'MENU_CORTE_VIRTUAL'),
                         self::item('Articulos pendientes', '/reportes/articulos-pendientes', permission: 'MENU_REPO_VENTA'),
                         self::item('Articulos pendientes por pedido', '/reportes/articulos-pendientes-pedido', permission: 'MENU_REPO_VENTA_PEDIDO'),
+                        self::item('Domicilio', '/reportes/domicilio', permission: 'MENU_REPORTE_DOMICILIO'),
                     ]),
                     self::group('Contabilidad', 'clipboard', [
                         self::item('Venta general', '/reportes/contabilidad/venta-general', permission: 'MENU_REPO_CONTA_1'),

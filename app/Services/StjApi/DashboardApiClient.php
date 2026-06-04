@@ -494,6 +494,51 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
+    public function storeHomeDelivery(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/store/home-delivery', array_filter([
+                'country' => $filters['country'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     *
+     * @throws RequestException
+     */
+    public function exportStoreHomeDelivery(array $filters): Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(max(300, (int) config('stj.api.timeout')))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->get('/dashboard/reports/store/home-delivery/export', array_filter([
+                'country' => $filters['country'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response;
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
     public function accounting3Count(array $filters): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
