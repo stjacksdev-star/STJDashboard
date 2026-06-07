@@ -66,6 +66,7 @@ const visitsData = ref({
     totals: {},
     filters: {},
 });
+const salesTooltip = ref(null);
 const satisfactionData = ref({
     filters: {},
     legend: [],
@@ -276,6 +277,8 @@ const visibleSeries = computed(() => {
 const maxValue = computed(() => Math.max(10, ...visibleSeries.value.flatMap((serie) => serie.data || [])));
 const conversionMaxValue = computed(() => Math.max(5, ...conversionData.value.series.flatMap((serie) => serie.data || [])));
 const visitsMaxValue = computed(() => Math.max(10, ...visitsData.value.series.flatMap((serie) => serie.data || [])));
+const salesTooltipWidth = 190;
+const salesTooltipHeight = 98;
 
 const yTicks = computed(() => {
     const top = maxValue.value;
@@ -373,7 +376,46 @@ const money = (value) => new Intl.NumberFormat('en-US', {
     currency: 'USD',
     maximumFractionDigits: 2,
 }).format(Number(value || 0));
+const amount = (value) => new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+}).format(Number(value || 0));
 const integer = (value) => Number(value || 0).toLocaleString('en-US');
+
+const salesTooltipX = computed(() => {
+    if (!salesTooltip.value) {
+        return 0;
+    }
+
+    return Math.min(
+        chartWidth - padding.right - salesTooltipWidth,
+        Math.max(padding.left, salesTooltip.value.x - salesTooltipWidth / 2),
+    );
+});
+const salesTooltipY = computed(() => {
+    if (!salesTooltip.value) {
+        return 0;
+    }
+
+    return Math.max(6, salesTooltip.value.y - salesTooltipHeight - 12);
+});
+const showSalesTooltip = (serie, index, value) => {
+    const yearMatch = String(serie.label || '').match(/\((\d{4})\)/);
+
+    salesTooltip.value = {
+        key: `${serie.key}-${index}`,
+        x: xFor(index),
+        y: yFor(value),
+        color: palette[serie.key] || '#2563eb',
+        date: chartData.value.categories[index] || '',
+        country: serie.country || String(serie.label || '').replace(/\s*\(\d{4}\)\s*$/, '') || 'N/D',
+        year: serie.year || yearMatch?.[1] || '',
+        value,
+    };
+};
+const hideSalesTooltip = () => {
+    salesTooltip.value = null;
+};
 
 const storeSummaryCards = computed(() => [
     {
@@ -447,6 +489,7 @@ const loadStoreSummary = async () => {
 const loadChart = async () => {
     loading.value = true;
     error.value = '';
+    hideSalesTooltip();
 
     try {
         const response = await window.axios.get('/dashboard-api/sales/regional-chart', {
@@ -727,6 +770,7 @@ watch(activeVisitsTab, () => {
 });
 
 watch(countries, ensureValidSalesCountry);
+watch(() => filters.value.country, hideSalesTooltip);
 
 onMounted(() => {
     if (isStoreManagerDashboard.value) {
@@ -898,9 +942,70 @@ onMounted(() => {
                                     :key="`${serie.key}-${index}`"
                                     :cx="xFor(index)"
                                     :cy="yFor(value)"
-                                    r="3"
+                                    :r="salesTooltip?.key === `${serie.key}-${index}` ? 5 : 3"
                                     :fill="palette[serie.key]"
+                                    class="cursor-pointer transition"
+                                    tabindex="0"
+                                    @mouseenter="showSalesTooltip(serie, index, value)"
+                                    @focus="showSalesTooltip(serie, index, value)"
+                                    @mouseleave="hideSalesTooltip"
+                                    @blur="hideSalesTooltip"
                                 />
+                            </g>
+
+                            <g v-if="salesTooltip" class="pointer-events-none">
+                                <line
+                                    :x1="salesTooltip.x"
+                                    :x2="salesTooltip.x"
+                                    :y1="padding.top"
+                                    :y2="chartHeight - padding.bottom"
+                                    stroke="var(--stj-border)"
+                                    stroke-dasharray="4 4"
+                                />
+                                <rect
+                                    :x="salesTooltipX"
+                                    :y="salesTooltipY"
+                                    :width="salesTooltipWidth"
+                                    :height="salesTooltipHeight"
+                                    rx="6"
+                                    fill="var(--stj-surface)"
+                                    stroke="var(--stj-border)"
+                                />
+                                <text
+                                    :x="salesTooltipX + 12"
+                                    :y="salesTooltipY + 20"
+                                    class="fill-current app-text"
+                                    font-size="12"
+                                    font-weight="700"
+                                >
+                                    {{ salesTooltip.date }}
+                                </text>
+                                <circle :cx="salesTooltipX + 14" :cy="salesTooltipY + 41" r="5" :fill="salesTooltip.color" />
+                                <text
+                                    :x="salesTooltipX + 26"
+                                    :y="salesTooltipY + 45"
+                                    class="fill-current app-text"
+                                    font-size="12"
+                                >
+                                    {{ salesTooltip.country }} ({{ salesTooltip.year }})
+                                </text>
+                                <text
+                                    :x="salesTooltipX + 12"
+                                    :y="salesTooltipY + 67"
+                                    class="fill-current app-muted"
+                                    font-size="11"
+                                >
+                                    Pais: {{ salesTooltip.country }} | Año: {{ salesTooltip.year }}
+                                </text>
+                                <text
+                                    :x="salesTooltipX + 12"
+                                    :y="salesTooltipY + 87"
+                                    class="fill-current app-text"
+                                    font-size="12"
+                                    font-weight="700"
+                                >
+                                    Monto: {{ amount(salesTooltip.value) }}
+                                </text>
                             </g>
                         </svg>
                     </div>
