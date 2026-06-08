@@ -70,9 +70,14 @@ const hasAssignedStore = computed(() => normalizedSessionStoreCode.value !== '' 
 const orderStoreCode = computed(() => String(order.value?.storePickup?.storeCode || ''));
 const normalizedOrderStoreCode = computed(() => normalizeStoreCode(orderStoreCode.value));
 const isSameSessionStore = computed(() => !hasAssignedStore.value || normalizedOrderStoreCode.value === normalizedSessionStoreCode.value);
-const canEditProducts = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value);
+const editableProductStatuses = ['RECIBIDO', 'EMPACADO-ENTREGA'];
+const canEditProducts = computed(() => editableProductStatuses.includes(order.value?.status) && canProcessOrders.value);
 const canEditOrderData = computed(() => order.value?.status === 'RECIBIDO');
-const canProcessCurrentOrder = computed(() => order.value?.status === 'RECIBIDO' && canProcessOrders.value && !editingLineId.value);
+const canProcessCurrentOrder = computed(() =>
+    editableProductStatuses.includes(order.value?.status)
+    && canProcessOrders.value
+    && !editingLineId.value,
+);
 const canMarkPackedCurrentOrder = computed(() =>
     order.value?.status === 'RECIBIDO'
     && paymentIsCash.value
@@ -592,6 +597,12 @@ function yesNo(value) {
 
 function productSubtotal(product, key) {
     return `${currency.value} ${formatMoney(product[key])}`;
+}
+
+function quantityWasEdited(product) {
+    return product.originalQuantity !== null
+        && product.originalQuantity !== undefined
+        && Number(product.originalQuantity) !== Number(product.quantity);
 }
 
 function signedMoney(value) {
@@ -1196,7 +1207,15 @@ onMounted(() => {
                                             min="0"
                                             class="app-surface app-text h-9 w-20 rounded-md border px-2 text-right text-sm outline-none"
                                         />
-                                        <span v-else>{{ formatNumber(product.quantity) }}</span>
+                                        <template v-else>
+                                            <div class="font-semibold">{{ formatNumber(product.quantity) }}</div>
+                                            <div v-if="quantityWasEdited(product)" class="mt-1 text-xs font-semibold text-amber-600">
+                                                Original {{ formatNumber(product.originalQuantity) }}
+                                            </div>
+                                            <div v-if="quantityWasEdited(product)" class="app-muted text-xs">
+                                                Editada {{ formatNumber(product.quantity) }}
+                                            </div>
+                                        </template>
                                     </td>
                                     <td class="app-text px-3 py-2 text-right">{{ product.billedQuantity ?? '-' }}</td>
                                     <td class="app-text px-3 py-2 text-right">{{ currency }} {{ formatMoney(product.price) }}</td>
