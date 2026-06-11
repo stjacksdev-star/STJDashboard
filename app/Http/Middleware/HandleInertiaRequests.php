@@ -22,8 +22,13 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->session()->get('stj.user');
 
-        if (is_array($user) && (blank($user['storeLabel'] ?? null) || blank($user['storeCode'] ?? null))) {
-            $user = app(StoreProfileService::class)->enrich($user);
+        if (is_array($user)) {
+            $user = $this->normalizeSessionCountry($user);
+
+            if (blank($user['storeLabel'] ?? null) || blank($user['storeCode'] ?? null)) {
+                $user = app(StoreProfileService::class)->enrich($user);
+            }
+
             $request->session()->put('stj.user', $user);
         }
 
@@ -45,5 +50,35 @@ class HandleInertiaRequests extends Middleware
             ],
             'navigation' => DashboardMenu::forUser($user),
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $user
+     * @return array<string, mixed>
+     */
+    private function normalizeSessionCountry(array $user): array
+    {
+        $id = (int) ($user['idPais'] ?? 0);
+
+        if ($id > 0) {
+            return $user;
+        }
+
+        $country = strtoupper((string) ($user['pais'] ?? ''));
+        $resolved = match ($country) {
+            'SV' => 1,
+            'GT' => 2,
+            'CR' => 3,
+            'NI' => 4,
+            'PA' => 5,
+            'HN' => 7,
+            default => 0,
+        };
+
+        if ($resolved > 0) {
+            $user['idPais'] = $resolved;
+        }
+
+        return $user;
     }
 }

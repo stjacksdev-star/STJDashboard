@@ -56,7 +56,7 @@ const columns = [
 const options = {
     pageLength: 25,
     lengthMenu: [10, 25, 50, 100],
-    order: [[1, 'desc']],
+    order: [[1, 'asc']],
     autoWidth: false,
     language: {
         search: 'Buscar:',

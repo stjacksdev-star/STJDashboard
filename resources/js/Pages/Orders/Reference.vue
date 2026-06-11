@@ -106,6 +106,7 @@ const paymentIsCard = computed(() => paymentType.value === 'TARJETA');
 const paymentIsCash = computed(() => paymentType.value === 'EFECTIVO');
 const processRefund = computed(() => paymentIsCard.value ? Math.max(0, -processDifference.value) : 0);
 const processCharge = computed(() => Math.max(0, processDifference.value));
+const processChargeTolerance = 0.02;
 const editingProduct = computed(() =>
     products.value.find((product) => Number(product.id) === Number(editingLineId.value)) || null,
 );
@@ -159,7 +160,7 @@ const processImpact = computed(() => {
         };
     }
 
-    if (processCharge.value >= 0.01) {
+    if (processCharge.value > processChargeTolerance) {
         if (paymentIsCard.value) {
             return {
                 type: 'charge',
@@ -1013,6 +1014,10 @@ onMounted(() => {
                             <div>
                                 <dt class="app-muted font-semibold">Recibe misma persona</dt>
                                 <dd class="app-text">{{ yesNo(order.shipping.samePerson) }}</dd>
+                            </div>
+                            <div v-if="yesNo(order.shipping.samePerson) === 'NO'">
+                                <dt class="app-muted font-semibold">Persona recibe</dt>
+                                <dd class="app-text">{{ display(order.shipping.receiverName) }}</dd>
                             </div>
                             <div>
                                 <dt class="app-muted font-semibold">Costo</dt>

@@ -36,7 +36,11 @@ class StoreProfileService
             return $user;
         }
 
-        $country = (string) ($user['idPais'] ?? $user['pais'] ?? '');
+        $country = (string) ($user['idPais'] ?? '');
+
+        if ($country === '' || $country === '0') {
+            $country = (string) ($user['pais'] ?? '');
+        }
 
         if ($country === '' || $country === '0') {
             $user['storeLabel'] = $store;
