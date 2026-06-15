@@ -86,6 +86,7 @@ const categoryData = ref({
         { id: 2, label: 'Guatemala', country: 'Guatemala' },
         { id: 3, label: 'Costa Rica', country: 'Costa Rica' },
         { id: 7, label: 'Honduras', country: 'Honduras' },
+        { id: 8, label: 'Venezuela', country: 'Venezuela' },
     ],
     dates: [],
     categories: [],
@@ -119,6 +120,7 @@ const paymentFormsData = ref({
         { key: 'gt', label: 'Guatemala' },
         { key: 'cr', label: 'Costa Rica' },
         { key: 'hn', label: 'Honduras' },
+        { key: 've', label: 'Venezuela' },
     ],
     issuers: ['VISA', 'MASTERCARD', 'AMEX', 'EFECTIVO'],
     store: [],
@@ -188,10 +190,11 @@ const baseCountries = [
     { id: '2', label: 'Guatemala' },
     { id: '3', label: 'Costa Rica' },
     { id: '7', label: 'Honduras' },
+    { id: '8', label: 'Venezuela' },
     { id: '4', label: 'Consolidado' },
 ];
 
-const dashboardCountryIds = [1, 2, 3, 7];
+const dashboardCountryIds = [1, 2, 3, 7, 8];
 const allowedCountryIds = computed(() =>
     (page.props.auth?.countries?.allowed || [])
         .map((country) => Number(country.id ?? country.countryId ?? country.country_id))
@@ -237,6 +240,7 @@ const conversionTabs = [
     { id: 'gt', label: 'Guatemala' },
     { id: 'cr', label: 'Costa Rica' },
     { id: 'hn', label: 'Honduras' },
+    { id: 've', label: 'Venezuela' },
 ];
 const visitsTabs = conversionTabs;
 
@@ -249,6 +253,8 @@ const palette = {
     cr_previous: '#8fc4f1',
     hn_current: '#d97706',
     hn_previous: '#fbbf24',
+    ve_current: '#6d28d9',
+    ve_previous: '#c4b5fd',
     total_current: '#7c3aed',
     total_previous: '#c4b5fd',
     conversion_current: '#2563eb',

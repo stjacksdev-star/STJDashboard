@@ -654,6 +654,7 @@ class OrderController extends Controller
             2 => 'Q',
             3 => 'CRC',
             7 => 'L',
+            8 => 'USD',
             default => 'USD',
         };
     }

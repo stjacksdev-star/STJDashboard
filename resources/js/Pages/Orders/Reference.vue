@@ -708,6 +708,7 @@ function countryCurrency(countryId) {
         3: 'CRC',
         5: 'USD',
         7: 'L',
+        8: 'USD',
     }[Number(countryId)] || '';
 }
 

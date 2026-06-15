@@ -202,6 +202,7 @@ function defaultCountries() {
         { code: 'CR', name: 'Costa Rica' },
         { code: 'NI', name: 'Nicaragua' },
         { code: 'HN', name: 'Honduras' },
+        { code: 'VE', name: 'Venezuela' },
     ];
 }
 

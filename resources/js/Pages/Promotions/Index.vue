@@ -437,12 +437,13 @@ async function updatePromotionSchedule() {
         return;
     }
 
+    const promotionId = selectedPromotion.value.id;
     editing.value = true;
     editError.value = '';
     editErrors.value = {};
 
     try {
-        await window.axios.post(`/dashboard-api/promotions/${selectedPromotion.value.id}/schedule`, {
+        await window.axios.post(`/dashboard-api/promotions/${promotionId}/schedule`, {
             commercialName: editForm.value.commercialName,
             startAt: canEditStart.value ? editForm.value.startAt : undefined,
             endAt: canEditEnd.value ? editForm.value.endAt : undefined,
@@ -450,6 +451,10 @@ async function updatePromotionSchedule() {
 
         showEditModal.value = false;
         await fetchPromotions();
+
+        if (assetPromotion.value?.id === promotionId) {
+            await fetchPromotionAssets(assetPromotion.value);
+        }
     } catch (exception) {
         editError.value = exception.response?.data?.message || 'No fue posible actualizar el horario.';
         editErrors.value = exception.response?.data?.errors || {};

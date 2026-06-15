@@ -130,6 +130,7 @@ class CasAuthService
             'NI' => 4,
             'PA' => 5,
             'HN' => 7,
+            'VE' => 8,
             default => 0,
         };
     }

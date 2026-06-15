@@ -128,6 +128,14 @@ function currencyForCountry(country) {
         return 'CRC';
     }
 
+    if (value === '7') {
+        return 'L';
+    }
+
+    if (value === '8') {
+        return 'USD';
+    }
+
     return 'USD';
 }
 
