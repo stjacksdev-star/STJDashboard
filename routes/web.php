@@ -10,6 +10,7 @@ use App\Http\Controllers\Dashboard\PromotionController;
 use App\Http\Controllers\Dashboard\ProductCategoryController;
 use App\Http\Controllers\Dashboard\ProductCountryController;
 use App\Http\Controllers\Dashboard\ProductMasterController;
+use App\Http\Controllers\Dashboard\PushNotificationController;
 use App\Http\Controllers\Dashboard\SalesController;
 use App\Http\Controllers\Dashboard\StoreReportController;
 use App\Http\Controllers\Dashboard\SubscriberController;
@@ -126,6 +127,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.subscribers.update');
     Route::delete('/dashboard-api/subscribers/{subscriber}', [SubscriberController::class, 'destroy'])
         ->name('dashboard-api.subscribers.destroy');
+    Route::get('/dashboard-api/push-notifications', [PushNotificationController::class, 'index'])
+        ->name('dashboard-api.push-notifications.index');
+    Route::post('/dashboard-api/push-notifications', [PushNotificationController::class, 'store'])
+        ->name('dashboard-api.push-notifications.store');
     Route::get('/dashboard-api/user-country-access', [UserCountryAccessController::class, 'index'])
         ->name('dashboard-api.user-country-access.index');
     Route::get('/dashboard-api/user-country-access/users', [UserCountryAccessController::class, 'users'])
@@ -225,6 +230,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('reports.subscribers');
     Route::get('/configuracion/usuarios-paises', fn () => Inertia::render('Settings/UserCountryAccess'))
         ->name('settings.user-country-access');
+    Route::get('/configuracion/push', fn () => Inertia::render('Settings/PushNotifications'))
+        ->name('settings.push-notifications');
 
     foreach ([
         '/cupones/mantenimiento' => 'Cupones / Mantenimiento',

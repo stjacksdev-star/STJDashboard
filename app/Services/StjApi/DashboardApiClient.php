@@ -1682,4 +1682,59 @@ class DashboardApiClient
 
         $response->throw();
     }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function pushNotifications(array $filters = [], array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/push-notifications', array_filter([
+                'startDate' => $filters['startDate'] ?? null,
+                'endDate' => $filters['endDate'] ?? null,
+                'status' => $filters['status'] ?? null,
+                'search' => $filters['search'] ?? null,
+                'limit' => 2000,
+                'actor' => $actor,
+            ], fn ($value) => filled($value)));
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function createPushNotification(array $data, array $actor = [], ?UploadedFile $image = null): array
+    {
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson();
+
+        if ($image) {
+            $request = $request->attach('image', fopen($image->getRealPath(), 'rb'), $image->getClientOriginalName());
+        }
+
+        $response = $request->post('/dashboard/push-notifications', [
+            ...$data,
+            'actor' => $actor,
+        ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
 }
