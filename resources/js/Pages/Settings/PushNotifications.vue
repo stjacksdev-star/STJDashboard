@@ -15,6 +15,7 @@ const formError = ref('');
 const errors = ref({});
 const notifications = ref([]);
 const statuses = ref(['TODO', 'PENDIENTE', 'ENVIADO', 'ERROR']);
+const platforms = ref(defaultPlatforms());
 const topics = ref(defaultTopics());
 const tableKey = ref(0);
 const showModal = ref(false);
@@ -27,6 +28,7 @@ const columns = [
     { data: 'statusLabel', title: 'Estado', width: '130px' },
     { data: 'title', title: 'Titulo' },
     { data: 'body', title: 'Cuerpo' },
+    { data: 'platformLabel', title: 'Plataforma', width: '120px' },
     { data: 'to', title: 'Destino', width: '160px' },
     { data: 'action', title: 'Accion' },
     { data: 'result', title: 'Resultado' },
@@ -59,6 +61,8 @@ const rows = computed(() =>
         ...item,
         scheduledAtLabel: formatDateTime(item.scheduledAt),
         statusLabel: statusHtml(item.status),
+        platformLabel: item.platform || 'WEB',
+        to: item.to || 'N/D',
         body: truncate(item.body, 120),
         action: truncate(item.action, 80),
         result: truncate(item.result, 120),
@@ -78,6 +82,7 @@ async function fetchNotifications() {
 
         notifications.value = response.data.data?.notifications || [];
         statuses.value = response.data.data?.options?.statuses || statuses.value;
+        platforms.value = response.data.data?.options?.platforms || defaultPlatforms();
         topics.value = response.data.data?.options?.topics || defaultTopics();
         tableKey.value += 1;
     } catch (exception) {
@@ -142,7 +147,8 @@ function defaultForm() {
         body: '',
         image: null,
         action: 'https://stjacks.com',
-        to: '/topics/all',
+        platform: 'Todo',
+        to: '',
         scheduledAt: toDateTimeInput(nextHour),
         promotionId: '',
     };
@@ -163,8 +169,12 @@ function normalizePayload(values) {
     payload.append('title', values.title);
     payload.append('body', values.body);
     payload.append('action', values.action);
-    payload.append('to', values.to);
+    payload.append('platform', values.platform);
     payload.append('scheduledAt', values.scheduledAt);
+
+    if (values.to) {
+        payload.append('to', values.to);
+    }
 
     if (values.promotionId) {
         payload.append('promotionId', values.promotionId);
@@ -175,6 +185,14 @@ function normalizePayload(values) {
     }
 
     return payload;
+}
+
+function defaultPlatforms() {
+    return [
+        { value: 'Todo', label: 'Todo' },
+        { value: 'Android', label: 'Android' },
+        { value: 'Ios', label: 'Ios' },
+    ];
 }
 
 function defaultTopics() {
@@ -391,10 +409,21 @@ function statusHtml(status) {
                             </label>
                         </div>
 
-                        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                        <div class="mt-4 grid gap-4 lg:grid-cols-3">
+                            <label class="block">
+                                <span class="app-muted text-sm font-medium">Plataforma</span>
+                                <select v-model="form.platform" required class="stj-input mt-2">
+                                    <option v-for="platform in platforms" :key="platform.value" :value="platform.value">
+                                        {{ platform.label }}
+                                    </option>
+                                </select>
+                                <span v-if="fieldError('platform')" class="stj-field-error">{{ fieldError('platform') }}</span>
+                            </label>
+
                             <label class="block">
                                 <span class="app-muted text-sm font-medium">Destino</span>
-                                <select v-model="form.to" required class="stj-input mt-2">
+                                <select v-model="form.to" class="stj-input mt-2">
+                                    <option value="">Sin destino</option>
                                     <option v-for="topic in topics" :key="topic.value" :value="topic.value">
                                         {{ topic.label }}
                                     </option>
