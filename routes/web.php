@@ -131,6 +131,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.push-notifications.index');
     Route::post('/dashboard-api/push-notifications', [PushNotificationController::class, 'store'])
         ->name('dashboard-api.push-notifications.store');
+    Route::delete('/dashboard-api/push-notifications/{notification}', [PushNotificationController::class, 'destroy'])
+        ->name('dashboard-api.push-notifications.destroy');
     Route::get('/dashboard-api/user-country-access', [UserCountryAccessController::class, 'index'])
         ->name('dashboard-api.user-country-access.index');
     Route::get('/dashboard-api/user-country-access/users', [UserCountryAccessController::class, 'users'])

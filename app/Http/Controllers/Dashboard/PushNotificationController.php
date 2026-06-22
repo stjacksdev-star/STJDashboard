@@ -21,7 +21,7 @@ class PushNotificationController extends Controller
         $validated = $request->validate([
             'startDate' => ['nullable', 'date'],
             'endDate' => ['nullable', 'date'],
-            'status' => ['nullable', 'string', Rule::in(['TODO', 'PENDIENTE', 'ENVIADO', 'ERROR'])],
+            'status' => ['nullable', 'string', Rule::in(['TODO', 'PENDIENTE', 'ENVIADO', 'ERROR', 'CANCELADO'])],
             'search' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -60,6 +60,23 @@ class PushNotificationController extends Controller
             ]);
         } catch (RequestException $exception) {
             return $this->apiError($exception, 'No fue posible programar la notificacion push en stj-api.');
+        }
+    }
+
+    public function destroy(Request $request, int $notification, DashboardApiClient $api): JsonResponse
+    {
+        if (! $this->canUsePushNotifications($request)) {
+            return $this->forbidden();
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->cancelPushNotification($notification, $this->actor($request)),
+                'message' => 'Notificacion push cancelada correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return $this->apiError($exception, 'No fue posible cancelar la notificacion push en stj-api.');
         }
     }
 

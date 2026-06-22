@@ -9,12 +9,13 @@ DataTable.use(DataTablesCore);
 
 const loading = ref(true);
 const saving = ref(false);
+const cancelling = ref(false);
 const error = ref('');
 const success = ref('');
 const formError = ref('');
 const errors = ref({});
 const notifications = ref([]);
-const statuses = ref(['TODO', 'PENDIENTE', 'ENVIADO', 'ERROR']);
+const statuses = ref(['TODO', 'PENDIENTE', 'ENVIADO', 'ERROR', 'CANCELADO']);
 const platforms = ref(defaultPlatforms());
 const topics = ref(defaultTopics());
 const tableKey = ref(0);
@@ -32,6 +33,7 @@ const columns = [
     { data: 'to', title: 'Destino', width: '160px' },
     { data: 'action', title: 'Accion' },
     { data: 'result', title: 'Resultado' },
+    { data: 'actions', title: 'Acciones', orderable: false, searchable: false, width: '90px' },
 ];
 
 const dataTableOptions = {
@@ -66,6 +68,7 @@ const rows = computed(() =>
         body: truncate(item.body, 120),
         action: truncate(item.action, 80),
         result: truncate(item.result, 120),
+        actions: actionsHtml(item),
     })),
 );
 
@@ -115,6 +118,48 @@ async function saveNotification() {
         errors.value = exception.response?.data?.errors || {};
     } finally {
         saving.value = false;
+    }
+}
+
+async function cancelNotification(notification) {
+    if (! notification || String(notification.status || '').toUpperCase() !== 'PENDIENTE') {
+        return;
+    }
+
+    const confirmed = window.confirm(`Cancelar la push #${notification.id}? El cron ya no la enviara.`);
+
+    if (! confirmed) {
+        return;
+    }
+
+    cancelling.value = true;
+    error.value = '';
+    success.value = '';
+
+    try {
+        const response = await window.axios.delete(`/dashboard-api/push-notifications/${notification.id}`);
+        success.value = response.data.message || 'Notificacion push cancelada correctamente.';
+        await fetchNotifications();
+    } catch (exception) {
+        error.value = exception.response?.data?.message
+            || firstError(exception.response?.data?.errors)
+            || 'No fue posible cancelar la notificacion push.';
+    } finally {
+        cancelling.value = false;
+    }
+}
+
+function handleTableAction(event) {
+    const button = event.target.closest('[data-push-action]');
+
+    if (! button) {
+        return;
+    }
+
+    const notification = notifications.value.find((item) => String(item.id) === String(button.dataset.pushId));
+
+    if (button.dataset.pushAction === 'cancel') {
+        cancelNotification(notification);
     }
 }
 
@@ -256,9 +301,31 @@ function statusHtml(status) {
         PENDIENTE: 'stj-status-pending',
         ENVIADO: 'stj-status-sent',
         ERROR: 'stj-status-error',
+        CANCELADO: 'stj-status-cancelled',
     }[normalized] || 'stj-status-muted';
 
     return `<span class="stj-status ${className}">${normalized || 'N/D'}</span>`;
+}
+
+function actionsHtml(item) {
+    if (String(item.status || '').toUpperCase() !== 'PENDIENTE') {
+        return '<span class="app-muted text-xs">N/D</span>';
+    }
+
+    return `
+        <div class="stj-row-actions">
+            <button
+                type="button"
+                class="stj-icon-button stj-icon-button-danger"
+                title="Cancelar push"
+                data-push-action="cancel"
+                data-push-id="${item.id}"
+                ${cancelling.value ? 'disabled' : ''}
+            >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            </button>
+        </div>
+    `;
 }
 </script>
 
@@ -341,7 +408,7 @@ function statusHtml(status) {
                         Cargando notificaciones push...
                     </div>
 
-                    <div v-else class="overflow-x-auto">
+                    <div v-else class="overflow-x-auto" @click="handleTableAction">
                         <DataTable
                             :key="tableKey"
                             :columns="columns"
@@ -556,8 +623,60 @@ function statusHtml(status) {
     color: #991b1b;
 }
 
+.stj-status-cancelled {
+    background: #e5e7eb;
+    color: #4b5563;
+}
+
 .stj-status-muted {
     background: #e5e7eb;
     color: #374151;
+}
+
+.stj-row-actions {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-width: 2rem;
+}
+
+.stj-icon-button {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--stj-border);
+    border-radius: 0.375rem;
+    color: var(--stj-muted);
+    cursor: pointer;
+    display: inline-flex;
+    height: 2rem;
+    justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    width: 2rem;
+}
+
+.stj-icon-button:hover {
+    color: var(--stj-text);
+}
+
+.stj-icon-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.stj-icon-button svg {
+    fill: none;
+    height: 1rem;
+    pointer-events: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    width: 1rem;
+}
+
+.stj-icon-button-danger:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #991b1b;
 }
 </style>

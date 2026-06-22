@@ -1737,4 +1737,25 @@ class DashboardApiClient
 
         return $response->json('data') ?? [];
     }
+
+    /**
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function cancelPushNotification(int $notification, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->delete("/dashboard/push-notifications/{$notification}", [
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
 }
