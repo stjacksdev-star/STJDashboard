@@ -82,14 +82,14 @@ class PushNotificationController extends Controller
 
     private function canUsePushNotifications(Request $request): bool
     {
-        return DashboardAccess::can($request->session()->get('stj.user'), 'ROOT');
+        return DashboardAccess::can($request->session()->get('stj.user'), 'MENU_PUSH_NOTIFICACIONES');
     }
 
     private function forbidden(): JsonResponse
     {
         return response()->json([
             'ok' => false,
-            'message' => 'Solo usuarios ROOT pueden administrar notificaciones push.',
+            'message' => 'No tienes permiso para administrar notificaciones push.',
         ], 403);
     }
 

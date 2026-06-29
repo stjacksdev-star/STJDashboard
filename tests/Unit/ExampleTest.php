@@ -54,4 +54,23 @@ class ExampleTest extends TestCase
         $this->assertContains('Productos', collect($menu)->pluck('label')->all());
         $this->assertContains('Configuracion', collect($menu)->pluck('label')->all());
     }
+
+    public function test_dashboard_menu_shows_push_with_push_permission(): void
+    {
+        $menu = DashboardMenu::forUser([
+            'operaciones' => [
+                ['ope_codigo' => 'MENU_PUSH_NOTIFICACIONES'],
+            ],
+        ]);
+
+        $labels = collect($menu)
+            ->flatMap(fn (array $section) => collect($section['items'])->pluck('label'))
+            ->values()
+            ->all();
+
+        $this->assertContains('Configuracion', collect($menu)->pluck('label')->all());
+        $this->assertContains('Push', $labels);
+        $this->assertNotContains('LOG', $labels);
+        $this->assertNotContains('Paises por usuario', $labels);
+    }
 }
