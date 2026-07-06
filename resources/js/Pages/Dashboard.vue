@@ -67,6 +67,8 @@ const visitsData = ref({
     filters: {},
 });
 const salesTooltip = ref(null);
+const salesChartSvg = ref(null);
+const salesExportMenuOpen = ref(false);
 const satisfactionData = ref({
     filters: {},
     legend: [],
@@ -423,6 +425,107 @@ const hideSalesTooltip = () => {
     salesTooltip.value = null;
 };
 
+const salesExportFileName = (extension) =>
+    `ventas-pais-${filters.value.startDate}-${filters.value.endDate}.${extension}`;
+
+const csvCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+
+const downloadBlob = (blob, filename) => {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+};
+
+const salesChartSvgMarkup = () => {
+    if (!salesChartSvg.value) {
+        return '';
+    }
+
+    const svg = salesChartSvg.value.cloneNode(true);
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    const rootStyles = getComputedStyle(document.documentElement);
+    const surface = rootStyles.getPropertyValue('--stj-surface').trim() || '#111827';
+    const text = rootStyles.getPropertyValue('--stj-text').trim() || '#f8fafc';
+    const textSoft = rootStyles.getPropertyValue('--stj-text-soft').trim() || '#bfdbfe';
+    const muted = rootStyles.getPropertyValue('--stj-muted').trim() || '#93c5fd';
+    const border = rootStyles.getPropertyValue('--stj-border').trim() || '#334155';
+    const borderSoft = rootStyles.getPropertyValue('--stj-border-soft').trim() || '#1f2937';
+
+    style.textContent = `
+        svg { background: ${surface}; }
+        .fill-current { fill: currentColor; }
+        .app-text { color: ${text}; }
+        .app-text-soft { color: ${textSoft}; }
+        .app-muted { color: ${muted}; }
+        * { --stj-surface: ${surface}; --stj-text: ${text}; --stj-text-soft: ${textSoft}; --stj-muted: ${muted}; --stj-border: ${border}; --stj-border-soft: ${borderSoft}; }
+    `;
+    svg.insertBefore(style, svg.firstChild);
+    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+    return new XMLSerializer().serializeToString(svg);
+};
+
+const exportSalesSvg = () => {
+    const markup = salesChartSvgMarkup();
+
+    if (!markup) {
+        return;
+    }
+
+    downloadBlob(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }), salesExportFileName('svg'));
+    salesExportMenuOpen.value = false;
+};
+
+const exportSalesPng = () => {
+    const markup = salesChartSvgMarkup();
+
+    if (!markup) {
+        return;
+    }
+
+    const image = new Image();
+    const svgUrl = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
+
+    image.onload = () => {
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = chartWidth * scale;
+        canvas.height = chartHeight * scale;
+        const context = canvas.getContext('2d');
+        context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stj-surface').trim() || '#111827';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(svgUrl);
+        canvas.toBlob((blob) => {
+            if (blob) {
+                downloadBlob(blob, salesExportFileName('png'));
+            }
+        }, 'image/png');
+    };
+    image.src = svgUrl;
+    salesExportMenuOpen.value = false;
+};
+
+const exportSalesCsv = () => {
+    if (!chartData.value.categories.length || !visibleSeries.value.length) {
+        return;
+    }
+
+    const header = ['Fecha', ...visibleSeries.value.map((serie) => serie.label)];
+    const rows = chartData.value.categories.map((date, index) => [
+        date,
+        ...visibleSeries.value.map((serie) => Number(serie.data?.[index] || 0).toFixed(2)),
+    ]);
+    const csv = [header, ...rows]
+        .map((row) => row.map(csvCell).join(','))
+        .join('\n');
+
+    downloadBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }), salesExportFileName('csv'));
+    salesExportMenuOpen.value = false;
+};
+
 const storeSummaryCards = computed(() => [
     {
         label: 'Pedidos pendientes',
@@ -776,7 +879,10 @@ watch(activeVisitsTab, () => {
 });
 
 watch(countries, ensureValidSalesCountry);
-watch(() => filters.value.country, hideSalesTooltip);
+watch(() => filters.value.country, () => {
+    hideSalesTooltip();
+    salesExportMenuOpen.value = false;
+});
 
 onMounted(() => {
     if (isStoreManagerDashboard.value) {
@@ -896,7 +1002,27 @@ onMounted(() => {
                             Cargando ventas...
                         </div>
 
+                        <div class="absolute right-3 top-3 z-20">
+                            <button
+                                type="button"
+                                class="stj-chart-menu-button"
+                                aria-label="Descargar grafico de ventas"
+                                :aria-expanded="salesExportMenuOpen"
+                                @click="salesExportMenuOpen = !salesExportMenuOpen"
+                            >
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </button>
+                            <div v-if="salesExportMenuOpen" class="stj-chart-menu">
+                                <button type="button" @click="exportSalesPng">Descargar PNG</button>
+                                <button type="button" @click="exportSalesCsv">Descargar CSV</button>
+                                <button type="button" @click="exportSalesSvg">Descargar SVG</button>
+                            </div>
+                        </div>
+
                         <svg
+                            ref="salesChartSvg"
                             class="min-w-[760px]"
                             :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
                             role="img"
@@ -2114,6 +2240,67 @@ onMounted(() => {
 .stj-dashboard-input:focus {
     border-color: var(--stj-primary);
     outline: 3px solid var(--stj-primary-soft);
+}
+
+.stj-chart-menu-button {
+    align-items: center;
+    background: var(--stj-surface);
+    border: 1px solid var(--stj-border);
+    border-radius: 6px;
+    color: var(--stj-text-soft);
+    display: inline-flex;
+    flex-direction: column;
+    gap: 3px;
+    height: 32px;
+    justify-content: center;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    width: 32px;
+}
+
+.stj-chart-menu-button:hover,
+.stj-chart-menu-button:focus {
+    background: var(--stj-surface-soft);
+    border-color: var(--stj-primary);
+    color: var(--stj-text);
+    outline: none;
+}
+
+.stj-chart-menu-button span {
+    background: currentColor;
+    border-radius: 999px;
+    display: block;
+    height: 2px;
+    width: 16px;
+}
+
+.stj-chart-menu {
+    background: var(--stj-surface);
+    border: 1px solid var(--stj-border);
+    border-radius: 6px;
+    box-shadow: 0 18px 40px rgb(0 0 0 / 0.28);
+    margin-top: 0.35rem;
+    min-width: 150px;
+    overflow: hidden;
+    padding: 0.35rem;
+    position: absolute;
+    right: 0;
+}
+
+.stj-chart-menu button {
+    border-radius: 4px;
+    color: var(--stj-text-soft);
+    display: block;
+    font-size: 0.875rem;
+    padding: 0.55rem 0.7rem;
+    text-align: left;
+    width: 100%;
+}
+
+.stj-chart-menu button:hover,
+.stj-chart-menu button:focus {
+    background: var(--stj-surface-soft);
+    color: var(--stj-text);
+    outline: none;
 }
 
 .stj-satisfaction-title {
