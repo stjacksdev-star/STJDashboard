@@ -69,6 +69,10 @@ const visitsData = ref({
 const salesTooltip = ref(null);
 const salesChartSvg = ref(null);
 const salesExportMenuOpen = ref(false);
+const conversionChartSvg = ref(null);
+const conversionExportMenuOpen = ref(false);
+const visitsChartSvg = ref(null);
+const visitsExportMenuOpen = ref(false);
 const satisfactionData = ref({
     filters: {},
     legend: [],
@@ -438,12 +442,12 @@ const downloadBlob = (blob, filename) => {
     URL.revokeObjectURL(link.href);
 };
 
-const salesChartSvgMarkup = () => {
-    if (!salesChartSvg.value) {
+const chartSvgMarkup = (svgElement) => {
+    if (!svgElement) {
         return '';
     }
 
-    const svg = salesChartSvg.value.cloneNode(true);
+    const svg = svgElement.cloneNode(true);
     const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
     const rootStyles = getComputedStyle(document.documentElement);
     const surface = rootStyles.getPropertyValue('--stj-surface').trim() || '#111827';
@@ -466,6 +470,8 @@ const salesChartSvgMarkup = () => {
 
     return new XMLSerializer().serializeToString(svg);
 };
+
+const salesChartSvgMarkup = () => chartSvgMarkup(salesChartSvg.value);
 
 const exportSalesSvg = () => {
     const markup = salesChartSvgMarkup();
@@ -524,6 +530,134 @@ const exportSalesCsv = () => {
 
     downloadBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }), salesExportFileName('csv'));
     salesExportMenuOpen.value = false;
+};
+
+const conversionExportFileName = (extension) =>
+    `conversion-${activeConversionTab.value}-${filters.value.startDate}-${filters.value.endDate}.${extension}`;
+
+const conversionChartSvgMarkup = () => chartSvgMarkup(conversionChartSvg.value);
+
+const exportConversionSvg = () => {
+    const markup = conversionChartSvgMarkup();
+
+    if (!markup) {
+        return;
+    }
+
+    downloadBlob(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }), conversionExportFileName('svg'));
+    conversionExportMenuOpen.value = false;
+};
+
+const exportConversionPng = () => {
+    const markup = conversionChartSvgMarkup();
+
+    if (!markup) {
+        return;
+    }
+
+    const image = new Image();
+    const svgUrl = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
+
+    image.onload = () => {
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = chartWidth * scale;
+        canvas.height = chartHeight * scale;
+        const context = canvas.getContext('2d');
+        context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stj-surface').trim() || '#111827';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(svgUrl);
+        canvas.toBlob((blob) => {
+            if (blob) {
+                downloadBlob(blob, conversionExportFileName('png'));
+            }
+        }, 'image/png');
+    };
+    image.src = svgUrl;
+    conversionExportMenuOpen.value = false;
+};
+
+const exportConversionCsv = () => {
+    if (!conversionData.value.categories.length || !conversionData.value.series.length) {
+        return;
+    }
+
+    const header = ['Fecha', ...conversionData.value.series.map((serie) => serie.label)];
+    const rows = conversionData.value.categories.map((date, index) => [
+        date,
+        ...conversionData.value.series.map((serie) => Number(serie.data?.[index] || 0).toFixed(2)),
+    ]);
+    const csv = [header, ...rows]
+        .map((row) => row.map(csvCell).join(','))
+        .join('\n');
+
+    downloadBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }), conversionExportFileName('csv'));
+    conversionExportMenuOpen.value = false;
+};
+
+const visitsExportFileName = (extension) =>
+    `visitas-${activeVisitsTab.value}-${filters.value.startDate}-${filters.value.endDate}.${extension}`;
+
+const visitsChartSvgMarkup = () => chartSvgMarkup(visitsChartSvg.value);
+
+const exportVisitsSvg = () => {
+    const markup = visitsChartSvgMarkup();
+
+    if (!markup) {
+        return;
+    }
+
+    downloadBlob(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }), visitsExportFileName('svg'));
+    visitsExportMenuOpen.value = false;
+};
+
+const exportVisitsPng = () => {
+    const markup = visitsChartSvgMarkup();
+
+    if (!markup) {
+        return;
+    }
+
+    const image = new Image();
+    const svgUrl = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
+
+    image.onload = () => {
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = chartWidth * scale;
+        canvas.height = chartHeight * scale;
+        const context = canvas.getContext('2d');
+        context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stj-surface').trim() || '#111827';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(svgUrl);
+        canvas.toBlob((blob) => {
+            if (blob) {
+                downloadBlob(blob, visitsExportFileName('png'));
+            }
+        }, 'image/png');
+    };
+    image.src = svgUrl;
+    visitsExportMenuOpen.value = false;
+};
+
+const exportVisitsCsv = () => {
+    if (!visitsData.value.categories.length || !visitsData.value.series.length) {
+        return;
+    }
+
+    const header = ['Fecha', ...visitsData.value.series.map((serie) => serie.label)];
+    const rows = visitsData.value.categories.map((date, index) => [
+        date,
+        ...visitsData.value.series.map((serie) => Number(serie.data?.[index] || 0)),
+    ]);
+    const csv = [header, ...rows]
+        .map((row) => row.map(csvCell).join(','))
+        .join('\n');
+
+    downloadBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }), visitsExportFileName('csv'));
+    visitsExportMenuOpen.value = false;
 };
 
 const storeSummaryCards = computed(() => [
@@ -867,12 +1001,16 @@ watch(activeTab, (tab) => {
 });
 
 watch(activeConversionTab, () => {
+    conversionExportMenuOpen.value = false;
+
     if (activeTab.value === 'conversion') {
         loadConversion();
     }
 });
 
 watch(activeVisitsTab, () => {
+    visitsExportMenuOpen.value = false;
+
     if (activeTab.value === 'visits') {
         loadVisits();
     }
@@ -1215,7 +1353,27 @@ onMounted(() => {
                             Cargando conversion...
                         </div>
 
+                        <div class="absolute right-3 top-3 z-20">
+                            <button
+                                type="button"
+                                class="stj-chart-menu-button"
+                                aria-label="Descargar grafico de conversion"
+                                :aria-expanded="conversionExportMenuOpen"
+                                @click="conversionExportMenuOpen = !conversionExportMenuOpen"
+                            >
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </button>
+                            <div v-if="conversionExportMenuOpen" class="stj-chart-menu">
+                                <button type="button" @click="exportConversionPng">Descargar PNG</button>
+                                <button type="button" @click="exportConversionCsv">Descargar CSV</button>
+                                <button type="button" @click="exportConversionSvg">Descargar SVG</button>
+                            </div>
+                        </div>
+
                         <svg
+                            ref="conversionChartSvg"
                             class="min-w-[760px]"
                             :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
                             role="img"
@@ -1967,7 +2125,27 @@ onMounted(() => {
                             Cargando visitas...
                         </div>
 
+                        <div class="absolute right-3 top-3 z-20">
+                            <button
+                                type="button"
+                                class="stj-chart-menu-button"
+                                aria-label="Descargar grafico de visitas"
+                                :aria-expanded="visitsExportMenuOpen"
+                                @click="visitsExportMenuOpen = !visitsExportMenuOpen"
+                            >
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </button>
+                            <div v-if="visitsExportMenuOpen" class="stj-chart-menu">
+                                <button type="button" @click="exportVisitsPng">Descargar PNG</button>
+                                <button type="button" @click="exportVisitsCsv">Descargar CSV</button>
+                                <button type="button" @click="exportVisitsSvg">Descargar SVG</button>
+                            </div>
+                        </div>
+
                         <svg
+                            ref="visitsChartSvg"
                             class="min-w-[760px]"
                             :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
                             role="img"
