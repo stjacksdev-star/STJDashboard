@@ -12,7 +12,7 @@ const { isDark, toggleTheme } = useTheme();
 const user = computed(() => page.props.auth?.user || {});
 const storeLabel = computed(() => user.value.storeLabel || user.value.tiendas || '00000');
 const navigation = computed(() => page.props.navigation || []);
-const logoUrl = 'https://stj-assets.sfo3.cdn.digitaloceanspaces.com/logos/stjecommerce/logo%20st%20jacks.svg';
+const logoUrl = 'https://stj-assets.sfo3.cdn.digitaloceanspaces.com/logos/stjdashboard/logo-w.png';
 
 const iconPaths = {
     activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
