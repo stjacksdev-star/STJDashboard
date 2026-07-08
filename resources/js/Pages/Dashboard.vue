@@ -67,6 +67,7 @@ const visitsData = ref({
     filters: {},
 });
 const salesTooltip = ref(null);
+const hiddenSalesSeries = ref(new Set());
 const salesChartSvg = ref(null);
 const salesExportMenuOpen = ref(false);
 const conversionChartSvg = ref(null);
@@ -276,7 +277,7 @@ const palette = {
     visits_previous: '#93c5fd',
 };
 
-const visibleSeries = computed(() => {
+const salesSeries = computed(() => {
     if (filters.value.country === '0') {
         return chartData.value.series.filter((serie) => serie.countryId !== 0);
     }
@@ -287,6 +288,9 @@ const visibleSeries = computed(() => {
 
     return chartData.value.series.filter((serie) => String(serie.countryId) === filters.value.country);
 });
+const visibleSeries = computed(() =>
+    salesSeries.value.filter((serie) => !hiddenSalesSeries.value.has(serie.key)),
+);
 
 const maxValue = computed(() => Math.max(10, ...visibleSeries.value.flatMap((serie) => serie.data || [])));
 const conversionMaxValue = computed(() => Math.max(5, ...conversionData.value.series.flatMap((serie) => serie.data || [])));
@@ -431,6 +435,19 @@ const showSalesTooltip = (serie, index, value) => {
 };
 const hideSalesTooltip = () => {
     salesTooltip.value = null;
+};
+const salesSeriesIsHidden = (key) => hiddenSalesSeries.value.has(key);
+const toggleSalesSeries = (key) => {
+    const next = new Set(hiddenSalesSeries.value);
+
+    if (next.has(key)) {
+        next.delete(key);
+    } else {
+        next.add(key);
+    }
+
+    hiddenSalesSeries.value = next;
+    hideSalesTooltip();
 };
 
 const conversionTooltipHeight = computed(() => 34 + (conversionTooltip.value?.rows.length || 0) * 22);
@@ -1113,6 +1130,7 @@ watch(activeVisitsTab, () => {
 watch(countries, ensureValidSalesCountry);
 watch(() => filters.value.country, () => {
     hideSalesTooltip();
+    hiddenSalesSeries.value = new Set();
     salesExportMenuOpen.value = false;
 });
 
@@ -1375,14 +1393,20 @@ onMounted(() => {
                     </div>
 
                     <div class="mt-4 flex flex-wrap gap-3">
-                        <div
-                            v-for="serie in visibleSeries"
+                        <button
+                            v-for="serie in salesSeries"
                             :key="serie.key"
-                            class="app-surface-soft app-border flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+                            type="button"
+                            :class="[
+                                'stj-chart-legend-button app-surface-soft app-border flex items-center gap-2 rounded-md border px-3 py-2 text-sm',
+                                salesSeriesIsHidden(serie.key) ? 'stj-chart-legend-button-hidden' : '',
+                            ]"
+                            :aria-pressed="!salesSeriesIsHidden(serie.key)"
+                            @click="toggleSalesSeries(serie.key)"
                         >
                             <span class="h-3 w-3 rounded-full" :style="{ background: palette[serie.key] }"></span>
                             <span class="app-text-soft">{{ serie.label }}</span>
-                        </div>
+                        </button>
                     </div>
 
                     <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -2675,6 +2699,21 @@ onMounted(() => {
     background: var(--stj-surface-soft);
     color: var(--stj-text);
     outline: none;
+}
+
+.stj-chart-legend-button {
+    transition: border-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+.stj-chart-legend-button:hover,
+.stj-chart-legend-button:focus {
+    border-color: var(--stj-primary);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.stj-chart-legend-button-hidden {
+    opacity: 0.38;
 }
 
 .stj-satisfaction-title {
