@@ -20,11 +20,12 @@ defineProps({
         <section class="grid min-h-screen lg:grid-cols-[440px_1fr]">
             <div class="flex flex-col justify-between bg-white px-8 py-10 shadow-xl shadow-blue-950/10 sm:px-12">
                 <div>
-                    <div class="inline-flex items-end gap-2">
-                        <span class="text-4xl font-bold tracking-tight text-blue-600">st.jack's</span>
-                        <span class="mb-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-blue-400">
-                            vive la ilusion
-                        </span>
+                    <div class="inline-flex items-center">
+                        <img
+                            src="https://stj-assets.sfo3.cdn.digitaloceanspaces.com/logos/stjdashboard/logo.png"
+                            alt="st.jack's"
+                            class="h-14 w-auto max-w-[210px] object-contain"
+                        >
                     </div>
 
                     <div class="mt-20">
