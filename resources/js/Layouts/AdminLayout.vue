@@ -12,6 +12,7 @@ const { isDark, toggleTheme } = useTheme();
 const user = computed(() => page.props.auth?.user || {});
 const storeLabel = computed(() => user.value.storeLabel || user.value.tiendas || '00000');
 const navigation = computed(() => page.props.navigation || []);
+const logoUrl = 'https://stj-assets.sfo3.cdn.digitaloceanspaces.com/logos/stjdashboard/logo-w.png';
 
 const iconPaths = {
     activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
@@ -116,20 +117,18 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                 <Link
                     href="/"
                     :class="[
-                        'flex min-w-0 items-end gap-2',
+                        'flex min-w-0 items-center',
                         sidebarCollapsed ? 'lg:justify-center' : '',
                     ]"
                 >
-                    <span v-if="sidebarCollapsed" class="hidden text-xl font-bold tracking-tight lg:inline">stj</span>
-                    <span :class="['text-2xl font-bold tracking-tight', sidebarCollapsed ? 'lg:hidden' : '']">st.jack's</span>
-                    <span
+                    <img
+                        :src="logoUrl"
+                        alt="st.jack's"
                         :class="[
-                            'app-header-muted mb-1 text-[9px] font-semibold uppercase tracking-[0.24em]',
-                            sidebarCollapsed ? 'lg:hidden' : '',
+                            'h-9 w-auto object-contain',
+                            sidebarCollapsed ? 'lg:h-8 lg:max-w-10' : 'max-w-[150px]',
                         ]"
                     >
-                        admin
-                    </span>
                 </Link>
             </div>
 
@@ -267,11 +266,8 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                         </svg>
                     </button>
 
-                    <div class="hidden items-end gap-2 lg:flex">
-                        <span class="text-2xl font-bold tracking-tight">st.jack's</span>
-                        <span class="app-header-muted mb-1 text-[9px] font-semibold uppercase tracking-[0.24em]">
-                            dashboard
-                        </span>
+                    <div class="hidden items-center lg:flex">
+                        <img :src="logoUrl" alt="st.jack's" class="h-9 w-auto max-w-[160px] object-contain">
                     </div>
                 </div>
 
