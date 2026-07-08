@@ -71,8 +71,10 @@ const salesChartSvg = ref(null);
 const salesExportMenuOpen = ref(false);
 const conversionChartSvg = ref(null);
 const conversionExportMenuOpen = ref(false);
+const conversionTooltip = ref(null);
 const visitsChartSvg = ref(null);
 const visitsExportMenuOpen = ref(false);
+const visitsTooltip = ref(null);
 const satisfactionData = ref({
     filters: {},
     legend: [],
@@ -291,6 +293,8 @@ const conversionMaxValue = computed(() => Math.max(5, ...conversionData.value.se
 const visitsMaxValue = computed(() => Math.max(10, ...visitsData.value.series.flatMap((serie) => serie.data || [])));
 const salesTooltipWidth = 190;
 const salesTooltipHeight = 98;
+const conversionTooltipWidth = 210;
+const visitsTooltipWidth = 210;
 
 const yTicks = computed(() => {
     const top = maxValue.value;
@@ -427,6 +431,82 @@ const showSalesTooltip = (serie, index, value) => {
 };
 const hideSalesTooltip = () => {
     salesTooltip.value = null;
+};
+
+const conversionTooltipHeight = computed(() => 34 + (conversionTooltip.value?.rows.length || 0) * 22);
+const conversionTooltipX = computed(() => {
+    if (!conversionTooltip.value) {
+        return 0;
+    }
+
+    return Math.min(
+        chartWidth - padding.right - conversionTooltipWidth,
+        Math.max(padding.left, conversionTooltip.value.x - conversionTooltipWidth / 2),
+    );
+});
+const conversionTooltipY = computed(() => {
+    if (!conversionTooltip.value) {
+        return 0;
+    }
+
+    return Math.max(6, conversionTooltip.value.y - conversionTooltipHeight.value - 12);
+});
+const showConversionTooltip = (index, value) => {
+    const rows = conversionData.value.series.map((serie) => ({
+        key: serie.key,
+        label: serie.label,
+        color: palette[serie.key] || '#2563eb',
+        value: Number(serie.data?.[index] || 0),
+    }));
+
+    conversionTooltip.value = {
+        key: `conversion-${index}`,
+        x: conversionXFor(index),
+        y: conversionYFor(value),
+        date: conversionData.value.categories[index] || '',
+        rows,
+    };
+};
+const hideConversionTooltip = () => {
+    conversionTooltip.value = null;
+};
+
+const visitsTooltipHeight = computed(() => 34 + (visitsTooltip.value?.rows.length || 0) * 22);
+const visitsTooltipX = computed(() => {
+    if (!visitsTooltip.value) {
+        return 0;
+    }
+
+    return Math.min(
+        chartWidth - padding.right - visitsTooltipWidth,
+        Math.max(padding.left, visitsTooltip.value.x - visitsTooltipWidth / 2),
+    );
+});
+const visitsTooltipY = computed(() => {
+    if (!visitsTooltip.value) {
+        return 0;
+    }
+
+    return Math.max(6, visitsTooltip.value.y - visitsTooltipHeight.value - 12);
+});
+const showVisitsTooltip = (index, value) => {
+    const rows = visitsData.value.series.map((serie) => ({
+        key: serie.key,
+        label: serie.label,
+        color: palette[serie.key] || '#2563eb',
+        value: Number(serie.data?.[index] || 0),
+    }));
+
+    visitsTooltip.value = {
+        key: `visits-${index}`,
+        x: visitsXFor(index),
+        y: visitsYFor(value),
+        date: visitsData.value.categories[index] || '',
+        rows,
+    };
+};
+const hideVisitsTooltip = () => {
+    visitsTooltip.value = null;
 };
 
 const salesExportFileName = (extension) =>
@@ -753,6 +833,7 @@ const loadChart = async () => {
 const loadConversion = async () => {
     conversionLoading.value = true;
     conversionError.value = '';
+    hideConversionTooltip();
 
     try {
         const response = await window.axios.get('/dashboard-api/sales/conversion', {
@@ -774,6 +855,7 @@ const loadConversion = async () => {
 const loadVisits = async () => {
     visitsLoading.value = true;
     visitsError.value = '';
+    hideVisitsTooltip();
 
     try {
         const params = {
@@ -967,6 +1049,16 @@ const otifClass = (value) => {
 };
 
 watch(activeTab, (tab) => {
+    if (tab !== 'conversion') {
+        hideConversionTooltip();
+        conversionExportMenuOpen.value = false;
+    }
+
+    if (tab !== 'visits') {
+        hideVisitsTooltip();
+        visitsExportMenuOpen.value = false;
+    }
+
     if (tab === 'conversion' && conversionData.value.categories.length === 0) {
         loadConversion();
     }
@@ -1002,6 +1094,7 @@ watch(activeTab, (tab) => {
 
 watch(activeConversionTab, () => {
     conversionExportMenuOpen.value = false;
+    hideConversionTooltip();
 
     if (activeTab.value === 'conversion') {
         loadConversion();
@@ -1010,6 +1103,7 @@ watch(activeConversionTab, () => {
 
 watch(activeVisitsTab, () => {
     visitsExportMenuOpen.value = false;
+    hideVisitsTooltip();
 
     if (activeTab.value === 'visits') {
         loadVisits();
@@ -1425,9 +1519,60 @@ onMounted(() => {
                                     :key="`${serie.key}-${index}`"
                                     :cx="conversionXFor(index)"
                                     :cy="conversionYFor(value)"
-                                    r="3"
+                                    :r="conversionTooltip?.key === `conversion-${index}` ? 5 : 3"
                                     :fill="palette[serie.key]"
+                                    class="cursor-pointer transition"
+                                    tabindex="0"
+                                    @mouseenter="showConversionTooltip(index, value)"
+                                    @focus="showConversionTooltip(index, value)"
+                                    @mouseleave="hideConversionTooltip"
+                                    @blur="hideConversionTooltip"
                                 />
+                            </g>
+
+                            <g v-if="conversionTooltip" class="pointer-events-none">
+                                <line
+                                    :x1="conversionTooltip.x"
+                                    :x2="conversionTooltip.x"
+                                    :y1="padding.top"
+                                    :y2="chartHeight - padding.bottom"
+                                    stroke="var(--stj-border)"
+                                    stroke-dasharray="4 4"
+                                />
+                                <rect
+                                    :x="conversionTooltipX"
+                                    :y="conversionTooltipY"
+                                    :width="conversionTooltipWidth"
+                                    :height="conversionTooltipHeight"
+                                    rx="6"
+                                    fill="var(--stj-surface)"
+                                    stroke="var(--stj-border)"
+                                />
+                                <text
+                                    :x="conversionTooltipX + 12"
+                                    :y="conversionTooltipY + 22"
+                                    class="fill-current app-text"
+                                    font-size="13"
+                                    font-weight="700"
+                                >
+                                    {{ conversionTooltip.date }}
+                                </text>
+                                <g v-for="(row, rowIndex) in conversionTooltip.rows" :key="row.key">
+                                    <circle
+                                        :cx="conversionTooltipX + 15"
+                                        :cy="conversionTooltipY + 45 + rowIndex * 22"
+                                        r="5"
+                                        :fill="row.color"
+                                    />
+                                    <text
+                                        :x="conversionTooltipX + 28"
+                                        :y="conversionTooltipY + 49 + rowIndex * 22"
+                                        class="fill-current app-text"
+                                        font-size="12"
+                                    >
+                                        {{ row.label }}: {{ percent(row.value) }}
+                                    </text>
+                                </g>
                             </g>
                         </svg>
                     </div>
@@ -2197,9 +2342,60 @@ onMounted(() => {
                                     :key="`${serie.key}-${index}`"
                                     :cx="visitsXFor(index)"
                                     :cy="visitsYFor(value)"
-                                    r="3"
+                                    :r="visitsTooltip?.key === `visits-${index}` ? 5 : 3"
                                     :fill="palette[serie.key]"
+                                    class="cursor-pointer transition"
+                                    tabindex="0"
+                                    @mouseenter="showVisitsTooltip(index, value)"
+                                    @focus="showVisitsTooltip(index, value)"
+                                    @mouseleave="hideVisitsTooltip"
+                                    @blur="hideVisitsTooltip"
                                 />
+                            </g>
+
+                            <g v-if="visitsTooltip" class="pointer-events-none">
+                                <line
+                                    :x1="visitsTooltip.x"
+                                    :x2="visitsTooltip.x"
+                                    :y1="padding.top"
+                                    :y2="chartHeight - padding.bottom"
+                                    stroke="var(--stj-border)"
+                                    stroke-dasharray="4 4"
+                                />
+                                <rect
+                                    :x="visitsTooltipX"
+                                    :y="visitsTooltipY"
+                                    :width="visitsTooltipWidth"
+                                    :height="visitsTooltipHeight"
+                                    rx="6"
+                                    fill="var(--stj-surface)"
+                                    stroke="var(--stj-border)"
+                                />
+                                <text
+                                    :x="visitsTooltipX + 12"
+                                    :y="visitsTooltipY + 22"
+                                    class="fill-current app-text"
+                                    font-size="13"
+                                    font-weight="700"
+                                >
+                                    {{ visitsTooltip.date }}
+                                </text>
+                                <g v-for="(row, rowIndex) in visitsTooltip.rows" :key="row.key">
+                                    <circle
+                                        :cx="visitsTooltipX + 15"
+                                        :cy="visitsTooltipY + 45 + rowIndex * 22"
+                                        r="5"
+                                        :fill="row.color"
+                                    />
+                                    <text
+                                        :x="visitsTooltipX + 28"
+                                        :y="visitsTooltipY + 49 + rowIndex * 22"
+                                        class="fill-current app-text"
+                                        font-size="12"
+                                    >
+                                        {{ row.label }}: {{ integer(row.value) }}
+                                    </text>
+                                </g>
                             </g>
                         </svg>
                     </div>
