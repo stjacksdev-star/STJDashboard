@@ -12,7 +12,7 @@ const { isDark, toggleTheme } = useTheme();
 const user = computed(() => page.props.auth?.user || {});
 const storeLabel = computed(() => user.value.storeLabel || user.value.tiendas || '00000');
 const navigation = computed(() => page.props.navigation || []);
-const logoUrl = 'https://stj-assets.sfo3.cdn.digitaloceanspaces.com/logos/stjdashboard/logo-w.png';
+const logoUrl = 'https://stj-assets.sfo3.cdn.digitaloceanspaces.com/logos/stjecommerce/logo%20st%20jacks.svg';
 
 const iconPaths = {
     activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
@@ -125,8 +125,8 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                         :src="logoUrl"
                         alt="st.jack's"
                         :class="[
-                            'h-9 w-auto object-contain',
-                            sidebarCollapsed ? 'lg:h-8 lg:max-w-10' : 'max-w-[150px]',
+                            'h-10 w-[150px] object-contain object-left',
+                            sidebarCollapsed ? 'lg:h-8 lg:w-10 lg:object-center' : '',
                         ]"
                     >
                 </Link>
@@ -267,7 +267,7 @@ const groupIsOpen = (item) => openGroups.value.has(item.label) || groupIsActive(
                     </button>
 
                     <div class="hidden items-center lg:flex">
-                        <img :src="logoUrl" alt="st.jack's" class="h-9 w-auto max-w-[160px] object-contain">
+                        <img :src="logoUrl" alt="st.jack's" class="h-10 w-[150px] object-contain object-left">
                     </div>
                 </div>
 
