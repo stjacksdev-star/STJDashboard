@@ -1247,12 +1247,12 @@ onMounted(() => {
                         {{ error }}
                     </div>
 
-                    <div class="relative min-h-[360px] overflow-x-auto">
+                    <div class="relative min-h-[360px] overflow-x-auto pt-10">
                         <div v-if="loading" class="app-muted absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm">
                             Cargando ventas...
                         </div>
 
-                        <div class="absolute right-3 top-3 z-20">
+                        <div class="absolute right-3 top-0 z-20">
                             <button
                                 type="button"
                                 class="stj-chart-menu-button"
@@ -1466,12 +1466,12 @@ onMounted(() => {
                         {{ conversionError }}
                     </div>
 
-                    <div class="relative mt-5 min-h-[360px] overflow-x-auto">
+                    <div class="relative mt-5 min-h-[360px] overflow-x-auto pt-10">
                         <div v-if="conversionLoading" class="app-muted absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm">
                             Cargando conversion...
                         </div>
 
-                        <div class="absolute right-3 top-3 z-20">
+                        <div class="absolute right-3 top-0 z-20">
                             <button
                                 type="button"
                                 class="stj-chart-menu-button"
@@ -2289,12 +2289,12 @@ onMounted(() => {
                         {{ visitsError }}
                     </div>
 
-                    <div class="relative mt-5 min-h-[360px] overflow-x-auto">
+                    <div class="relative mt-5 min-h-[360px] overflow-x-auto pt-10">
                         <div v-if="visitsLoading" class="app-muted absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm">
                             Cargando visitas...
                         </div>
 
-                        <div class="absolute right-3 top-3 z-20">
+                        <div class="absolute right-3 top-0 z-20">
                             <button
                                 type="button"
                                 class="stj-chart-menu-button"
