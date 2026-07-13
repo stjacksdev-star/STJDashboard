@@ -1020,6 +1020,10 @@ onMounted(() => {
                                 <dt class="app-muted font-semibold">Persona recibe</dt>
                                 <dd class="app-text">{{ display(order.shipping.receiverName) }}</dd>
                             </div>
+                            <div v-if="yesNo(order.shipping.samePerson) === 'NO'">
+                                <dt class="app-muted font-semibold">Telefono</dt>
+                                <dd class="app-text">{{ display(order.shipping.receiverPhone) }}</dd>
+                            </div>
                             <div>
                                 <dt class="app-muted font-semibold">Costo</dt>
                                 <dd class="app-text">{{ currency }} {{ formatMoney(order.shipping.cost) }}</dd>
