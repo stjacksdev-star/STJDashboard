@@ -417,6 +417,79 @@ class OrderController extends Controller
         }
     }
 
+    public function shippingManagement(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! $this->isRoot($request)) {
+            return response()->json(['ok' => false, 'message' => 'Solo un usuario ROOT puede acceder a esta gestion.'], 403);
+        }
+
+        $validated = $request->validate([
+            'reference' => ['required', 'string', 'max:60'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->shippingManagement($validated['reference'], $this->actor($request)),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible consultar el pedido.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function updateShippingManagement(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! $this->isRoot($request)) {
+            return response()->json(['ok' => false, 'message' => 'Solo un usuario ROOT puede acceder a esta gestion.'], 403);
+        }
+
+        $validated = $request->validate([
+            'reference' => ['required', 'string', 'max:60'],
+            'shippingType' => ['required', 'string', 'max:50'],
+            'urbanId' => ['nullable', 'string', 'max:100'],
+            'shippingId' => ['nullable', 'string', 'max:100'],
+            'shippingCost' => ['required', 'numeric', 'min:0'],
+            'shippingCostText' => ['nullable', 'string', 'max:200'],
+            'finalShippingCost' => ['required', 'numeric', 'min:0'],
+            'freeShipping' => ['required', 'in:SI,NO'],
+            'routeAt' => ['nullable', 'date'],
+            'addressType' => ['nullable', 'string', 'max:30'],
+            'samePerson' => ['required', 'in:SI,NO'],
+            'sameAddress' => ['required', 'in:SI,NO'],
+            'country' => ['required', 'string', 'max:10'],
+            'latitude' => ['nullable', 'string', 'max:50'],
+            'longitude' => ['nullable', 'string', 'max:50'],
+            'address' => ['required', 'string', 'max:200'],
+            'referencePoint' => ['nullable', 'string', 'max:200'],
+            'departmentId' => ['nullable', 'string', 'max:30'],
+            'municipalityId' => ['nullable', 'string', 'max:30'],
+            'department' => ['nullable', 'string', 'max:100'],
+            'municipality' => ['nullable', 'string', 'max:100'],
+            'district' => ['nullable', 'string', 'max:100'],
+            'receiverName' => ['nullable', 'string', 'max:100'],
+            'receiverPhone' => ['nullable', 'string', 'max:100'],
+            'saveType' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->updateShippingManagement($validated, $this->actor($request)),
+                'message' => 'Datos de envio actualizados correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible actualizar los datos de envio.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     public function updateData(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([
@@ -630,6 +703,11 @@ class OrderController extends Controller
             'ip' => $request->ip(),
             'userAgent' => substr((string) $request->userAgent(), 0, 500),
         ];
+    }
+
+    private function isRoot(Request $request): bool
+    {
+        return in_array('ROOT', DashboardAccess::permissions($request->session()->get('stj.user')), true);
     }
 
     /**

@@ -878,6 +878,38 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function shippingManagement(string $reference, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/orders/shipping-management/lookup', [
+                'reference' => $reference,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    public function updateShippingManagement(array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post('/dashboard/orders/shipping-management', [
+                ...$data,
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
     /**
      * @param array<string, mixed> $data
      * @param array<string, mixed> $actor

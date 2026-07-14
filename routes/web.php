@@ -16,6 +16,7 @@ use App\Http\Controllers\Dashboard\StoreReportController;
 use App\Http\Controllers\Dashboard\SubscriberController;
 use App\Http\Controllers\Dashboard\UserCountryAccessController;
 use App\Http\Middleware\EnsureCasAuthenticated;
+use App\Support\DashboardAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -177,6 +178,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.orders.product');
     Route::post('/dashboard-api/orders/data', [OrderController::class, 'updateData'])
         ->name('dashboard-api.orders.data.update');
+    Route::post('/dashboard-api/orders/shipping-management/lookup', [OrderController::class, 'shippingManagement'])
+        ->name('dashboard-api.orders.shipping-management.lookup');
+    Route::post('/dashboard-api/orders/shipping-management', [OrderController::class, 'updateShippingManagement'])
+        ->name('dashboard-api.orders.shipping-management.update');
     Route::post('/dashboard-api/orders/lines/{line}', [OrderController::class, 'updateLine'])
         ->name('dashboard-api.orders.lines.update');
     Route::post('/dashboard-api/orders/process', [OrderController::class, 'process'])
@@ -216,6 +221,15 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         'initialCountry' => $request->string('country')->toString(),
         'initialReference' => $request->string('id')->toString(),
     ]))->name('orders.reference');
+    Route::get('/pedidos/gestiones', function (Request $request) {
+        abort_unless(
+            in_array('ROOT', DashboardAccess::permissions($request->session()->get('stj.user')), true),
+            403,
+            'Solo un usuario ROOT puede acceder a esta gestion.'
+        );
+
+        return Inertia::render('Orders/Management');
+    })->name('orders.management');
     Route::get('/reportes/corte-virtual', fn () => Inertia::render('Reports/StoreVirtualCut'))
         ->name('reports.store.virtual-cut');
     Route::get('/reportes/articulos-pendientes', fn () => Inertia::render('Reports/PendingItems'))
@@ -238,7 +252,6 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
     foreach ([
         '/cupones/mantenimiento' => 'Cupones / Mantenimiento',
         '/cupones/reportes' => 'Cupones / Reportes',
-        '/pedidos/gestiones' => 'Pedidos / Gestiones',
         '/reportes/catalogo' => 'Reportes / Catalogo',
         '/reportes/im/venta' => 'Reportes / IM Venta',
         '/reportes/contabilidad/venta-general-2' => 'Reportes / Contabilidad 2',
