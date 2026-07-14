@@ -107,6 +107,7 @@ const paymentIsCash = computed(() => paymentType.value === 'EFECTIVO');
 const processRefund = computed(() => paymentIsCard.value ? Math.max(0, -processDifference.value) : 0);
 const processCharge = computed(() => Math.max(0, processDifference.value));
 const processChargeTolerance = 0.02;
+const cardPaymentIncreaseTolerance = 0.05;
 const editingProduct = computed(() =>
     products.value.find((product) => Number(product.id) === Number(editingLineId.value)) || null,
 );
@@ -160,7 +161,9 @@ const processImpact = computed(() => {
         };
     }
 
-    if (processCharge.value > processChargeTolerance) {
+    const allowedCharge = paymentIsCard.value ? cardPaymentIncreaseTolerance : processChargeTolerance;
+
+    if (processCharge.value > allowedCharge) {
         if (paymentIsCard.value) {
             return {
                 type: 'charge',
@@ -355,8 +358,8 @@ async function saveLineEdit() {
         return;
     }
 
-    if (cardLineEditIncrease.value >= 0.01) {
-        lineError.value = `No se puede aumentar el monto de un pedido pagado con tarjeta. El detalle quedaria arriba del total aprobado por ${currency.value} ${formatMoney(cardLineEditIncrease.value)}.`;
+    if (cardLineEditIncrease.value > cardPaymentIncreaseTolerance) {
+        lineError.value = `No se puede aumentar el monto de un pedido pagado con tarjeta por mas de ${currency.value} ${formatMoney(cardPaymentIncreaseTolerance)}. El detalle quedaria arriba del total aprobado por ${currency.value} ${formatMoney(cardLineEditIncrease.value)}.`;
         return;
     }
 
