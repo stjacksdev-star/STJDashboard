@@ -1230,7 +1230,16 @@ onMounted(() => {
                                     <td class="app-text px-3 py-2 text-right">{{ product.billedQuantity ?? '-' }}</td>
                                     <td class="app-text px-3 py-2 text-right">{{ currency }} {{ formatMoney(product.price) }}</td>
                                     <td class="app-text px-3 py-2 text-right">
-                                        <span>{{ formatMoney(product.discount) }}%</span>
+                                        <input
+                                            v-if="editingLineId === product.id"
+                                            v-model="lineForm.discount"
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="0.01"
+                                            class="app-surface app-text h-9 w-20 rounded-md border px-2 text-right text-sm outline-none"
+                                        />
+                                        <span v-else>{{ formatMoney(product.discount) }}%</span>
                                     </td>
                                     <td class="app-text px-3 py-2 text-right">{{ formatMoney(product.billedDiscount) }}%</td>
                                     <td class="app-text px-3 py-2 text-right">{{ productSubtotal(product, 'chargedSubtotal') }}</td>
