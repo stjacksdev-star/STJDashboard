@@ -699,7 +699,7 @@ class OrderController extends Controller
             'countryId' => $user['idPais'] ?? null,
             'storeId' => $user['storeId'] ?? $user['tiendas'] ?? null,
             'storeCode' => $user['storeCode'] ?? $user['tiendas'] ?? null,
-            'permissions' => $user['operaciones'] ?? [],
+            'permissions' => DashboardAccess::permissions($user),
             'ip' => $request->ip(),
             'userAgent' => substr((string) $request->userAgent(), 0, 500),
         ];
