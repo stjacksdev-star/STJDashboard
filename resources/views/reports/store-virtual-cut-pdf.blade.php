@@ -106,7 +106,7 @@
 <table class="header">
     <tr>
         <td>
-            <h1>Corte Virtual EMPACADO-ENTREGA</h1>
+            <h1>Corte Virtual</h1>
             <div class="muted">Generado: {{ $generatedAt }}</div>
         </td>
         <td class="brand">ST. JACK'S</td>
