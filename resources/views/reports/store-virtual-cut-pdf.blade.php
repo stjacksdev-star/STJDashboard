@@ -106,7 +106,7 @@
 <table class="header">
     <tr>
         <td>
-            <h1>Corte Virtual</h1>
+            <h1>Corte Virtual EMPACADO-ENTREGA</h1>
             <div class="muted">Generado: {{ $generatedAt }}</div>
         </td>
         <td class="brand">ST. JACK'S</td>
@@ -139,22 +139,24 @@
 <table>
     <thead>
         <tr>
-            <th style="width: 12%;">Fecha compra</th>
-            <th style="width: 9%;">Forma pago</th>
-            <th style="width: 11%;">Referencia</th>
-            <th style="width: 9%;">Ticket</th>
-            <th style="width: 12%;">Fecha facturado</th>
-            <th style="width: 9%;">Autorizacion</th>
-            <th class="right" style="width: 9%;">Monto cobrado</th>
-            <th class="right" style="width: 7%;">Envio</th>
-            <th class="right" style="width: 8%;">Devolucion</th>
-            <th class="right" style="width: 8%;">Total</th>
+            <th style="width: 11%;">Fecha compra</th>
+            <th style="width: 10%;">Estado</th>
+            <th style="width: 8%;">Forma pago</th>
+            <th style="width: 10%;">Referencia</th>
+            <th style="width: 8%;">Ticket</th>
+            <th style="width: 11%;">Fecha facturado</th>
+            <th style="width: 8%;">Autorizacion</th>
+            <th class="right" style="width: 8%;">Monto cobrado</th>
+            <th class="right" style="width: 6%;">Envio</th>
+            <th class="right" style="width: 7%;">Devolucion</th>
+            <th class="right" style="width: 7%;">Total</th>
         </tr>
     </thead>
     <tbody>
         @forelse ($rows as $row)
             <tr>
                 <td>{{ $row['purchaseDate'] ?? '' }}</td>
+                <td>{{ $row['status'] ?? '' }}</td>
                 <td>{{ $row['paymentType'] ?? '' }}</td>
                 <td>{{ $row['reference'] ?? '' }}</td>
                 <td>{{ $row['ticket'] ?? '' }}</td>
@@ -167,20 +169,20 @@
             </tr>
         @empty
             <tr>
-                <td class="center muted" colspan="10">No hay transacciones para los filtros seleccionados.</td>
+                <td class="center muted" colspan="11">No hay transacciones para los filtros seleccionados.</td>
             </tr>
         @endforelse
 
         <tr class="totals">
-            <th class="right" colspan="9">TARJETA:</th>
+            <th class="right" colspan="10">TARJETA:</th>
             <td class="right">{{ $money($summary['card'] ?? 0) }}</td>
         </tr>
         <tr class="totals">
-            <th class="right" colspan="9">EFECTIVO:</th>
+            <th class="right" colspan="10">EFECTIVO:</th>
             <td class="right">{{ $money($summary['cash'] ?? 0) }}</td>
         </tr>
         <tr class="totals">
-            <th class="right" colspan="9">TOTAL:</th>
+            <th class="right" colspan="10">TOTAL:</th>
             <td class="right">{{ $currency }}{{ $money($summary['total'] ?? 0) }}</td>
         </tr>
     </tbody>

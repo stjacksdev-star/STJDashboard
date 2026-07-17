@@ -9,6 +9,7 @@ DataTable.use(DataTablesCore);
 
 const processedStatuses = [
     'PREPARADO',
+    'EMPACADO-ENTREGA',
     'EN-RUTA',
     'ENTREGADO',
     'ANULADO-ERROR',

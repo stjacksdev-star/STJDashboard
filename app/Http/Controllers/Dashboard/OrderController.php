@@ -17,6 +17,7 @@ class OrderController extends Controller
 {
     private const PROCESSED_ORDER_STATUSES = [
         'PREPARADO',
+        'EMPACADO-ENTREGA',
         'EN-RUTA',
         'ENTREGADO',
         'ANULADO-ERROR',

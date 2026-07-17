@@ -40,6 +40,7 @@ const filters = ref({
 
 const columns = [
     { data: 'purchaseDate', title: 'Fecha compra' },
+    { data: 'status', title: 'Estado' },
     { data: 'paymentType', title: 'Forma pago' },
     { data: 'reference', title: 'Referencia' },
     { data: 'ticket', title: 'Ticket' },
@@ -271,10 +272,10 @@ watch(
                             Reportes / Tiendas
                         </p>
                         <h1 class="app-text mt-3 text-3xl font-semibold">
-                            Corte Virtual
+                            Corte Virtual EMPACADO-ENTREGA
                         </h1>
                         <p class="app-muted mt-2 max-w-3xl text-sm leading-6">
-                            Resumen de transacciones aprobadas por tienda y fecha.
+                            Resumen de transacciones aprobadas en estado EMPACADO-ENTREGA por tienda y fecha.
                         </p>
                     </div>
 
