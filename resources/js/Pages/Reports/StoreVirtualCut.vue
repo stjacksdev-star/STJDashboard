@@ -419,6 +419,11 @@ watch(
 
 <style>
 @media print {
+    @page {
+        size: landscape;
+        margin: 8mm;
+    }
+
     .no-print,
     .dt-search,
     .dt-length,
@@ -429,11 +434,57 @@ watch(
 
     body {
         background: #ffffff !important;
+        font-size: 9px !important;
     }
 
     .app-surface {
         border-color: #d1d5db !important;
         box-shadow: none !important;
+        padding: 8px !important;
+    }
+
+    .stj-data-table {
+        font-size: 8px !important;
+        table-layout: fixed !important;
+        width: 100% !important;
+    }
+
+    .stj-data-table th,
+    .stj-data-table td {
+        padding: 3px 2px !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+
+    .stj-data-table th:nth-child(1),
+    .stj-data-table td:nth-child(1),
+    .stj-data-table th:nth-child(6),
+    .stj-data-table td:nth-child(6) {
+        width: 9% !important;
+    }
+
+    .stj-data-table th:nth-child(2),
+    .stj-data-table td:nth-child(2),
+    .stj-data-table th:nth-child(3),
+    .stj-data-table td:nth-child(3),
+    .stj-data-table th:nth-child(5),
+    .stj-data-table td:nth-child(5),
+    .stj-data-table th:nth-child(7),
+    .stj-data-table td:nth-child(7),
+    .stj-data-table th:nth-child(8),
+    .stj-data-table td:nth-child(8),
+    .stj-data-table th:nth-child(9),
+    .stj-data-table td:nth-child(9),
+    .stj-data-table th:nth-child(10),
+    .stj-data-table td:nth-child(10),
+    .stj-data-table th:nth-child(11),
+    .stj-data-table td:nth-child(11) {
+        width: 7% !important;
+    }
+
+    .stj-data-table th:nth-child(4),
+    .stj-data-table td:nth-child(4) {
+        width: 12% !important;
     }
 }
 </style>
