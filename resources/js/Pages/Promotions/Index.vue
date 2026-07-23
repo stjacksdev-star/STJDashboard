@@ -410,8 +410,7 @@ async function replacePromotionProducts() {
             payload,
             { headers: { 'Content-Type': 'multipart/form-data' } },
         );
-        const inserted = response.data.data?.insertedCount ?? 0;
-        window.alert(`Productos reemplazados correctamente. Se insertaron ${inserted} producto(s).`);
+        window.alert(response.data.message || 'Productos reemplazados correctamente.');
         editForm.value.products = null;
         if (editProductsInput.value) {
             editProductsInput.value.value = '';

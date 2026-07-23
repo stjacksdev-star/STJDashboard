@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 // use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Services\CasAuthService;
+use App\Services\StjApi\DashboardApiClient;
+use Illuminate\Http\Client\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -89,5 +92,30 @@ class ExampleTest extends TestCase
 
         $this->assertSame('slf', $localQuery['redirect'] ?? null);
         $this->assertSame('http://127.0.0.1:8001/login', $localQuery['url'] ?? null);
+    }
+
+    public function test_promotion_product_upload_sends_dashboard_actor_as_multipart_fields(): void
+    {
+        config([
+            'stj.api.base_url' => 'https://api.example.test/api',
+            'stj.api.dashboard_token' => 'test-token',
+        ]);
+
+        Http::fake([
+            'https://api.example.test/api/dashboard/promotions/1994/products' => Http::response([
+                'data' => ['insertedCount' => 1],
+            ]),
+        ]);
+
+        app(DashboardApiClient::class)->replacePromotionProducts(
+            1994,
+            UploadedFile::fake()->createWithContent('productos.csv', "codigo\n0000000001\n"),
+            ['id' => '25', 'name' => 'Usuario Dashboard'],
+        );
+
+        Http::assertSent(fn (Request $request) => str_contains($request->body(), 'name="actor[id]"')
+            && str_contains($request->body(), '25')
+            && str_contains($request->body(), 'name="actor[name]"')
+            && str_contains($request->body(), 'Usuario Dashboard'));
     }
 }

@@ -1051,6 +1051,10 @@ class DashboardApiClient
             $request = $request->attach('products', fopen($products->getRealPath(), 'rb'), $products->getClientOriginalName());
         }
 
+        $actorPayload = $products
+            ? $this->multipartActor($actor)
+            : ['actor' => $actor];
+
         $response = $request->post('/dashboard/promotions', [
             'country' => $data['country'],
             'name' => $data['name'],
@@ -1064,7 +1068,7 @@ class DashboardApiClient
             'percentage' => $data['percentage'] ?? null,
             'startAt' => $data['startAt'],
             'endAt' => $data['endAt'],
-            'actor' => $actor,
+            ...$actorPayload,
         ]);
 
         $response->throw();
@@ -1103,7 +1107,7 @@ class DashboardApiClient
             ->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()
             ->attach('products', fopen($products->getRealPath(), 'rb'), $products->getClientOriginalName())
-            ->post("/dashboard/promotions/{$promotion}/products", ['actor' => $actor]);
+            ->post("/dashboard/promotions/{$promotion}/products", $this->multipartActor($actor));
 
         $response->throw();
 
@@ -1137,7 +1141,7 @@ class DashboardApiClient
             'startAt' => $data['startAt'],
             'endAt' => $data['endAt'],
             'title' => $data['title'] ?? null,
-            'actor' => $actor,
+            ...$this->multipartActor($actor),
         ]);
 
         $response->throw();
@@ -1166,6 +1170,10 @@ class DashboardApiClient
             $request = $request->attach('mobileImage', fopen($mobileImage->getRealPath(), 'rb'), $mobileImage->getClientOriginalName());
         }
 
+        $actorPayload = ($image || $mobileImage)
+            ? $this->multipartActor($actor)
+            : ['actor' => $actor];
+
         $response = $request->post("/dashboard/promotions/assets/{$asset}", [
             'type' => $data['type'],
             'platform' => $data['platform'] ?? 'WEB',
@@ -1175,7 +1183,7 @@ class DashboardApiClient
             'startAt' => $data['startAt'],
             'endAt' => $data['endAt'],
             'title' => $data['title'] ?? null,
-            'actor' => $actor,
+            ...$actorPayload,
         ]);
 
         $response->throw();
@@ -1209,7 +1217,7 @@ class DashboardApiClient
             ->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()
             ->attach('header', fopen($header->getRealPath(), 'rb'), $header->getClientOriginalName())
-            ->post("/dashboard/promotions/{$promotion}/header", ['actor' => $actor]);
+            ->post("/dashboard/promotions/{$promotion}/header", $this->multipartActor($actor));
 
         $response->throw();
 
@@ -1813,5 +1821,19 @@ class DashboardApiClient
         $response->throw();
 
         return $response->json('data') ?? [];
+    }
+
+    /**
+     * Encode nested actor data using PHP multipart field notation.
+     *
+     * @param array<string, mixed> $actor
+     * @return array<string, string>
+     */
+    private function multipartActor(array $actor): array
+    {
+        return collect($actor)
+            ->filter(fn ($value) => is_scalar($value) && filled($value))
+            ->mapWithKeys(fn ($value, string $key) => ["actor[{$key}]" => (string) $value])
+            ->all();
     }
 }
