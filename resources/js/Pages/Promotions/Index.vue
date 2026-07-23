@@ -50,7 +50,10 @@ const editForm = ref({
     commercialName: '',
     startAt: '',
     endAt: '',
+    products: null,
 });
+const replacingProducts = ref(false);
+const editProductsInput = ref(null);
 const assetForm = ref(defaultAssetForm());
 const headerForm = ref({
     header: null,
@@ -375,10 +378,52 @@ function openEditModal(promotion) {
         commercialName: promotion.commercialName || '',
         startAt: sqlToDatetimeLocal(promotion.startAt),
         endAt: sqlToDatetimeLocal(promotion.endAt),
+        products: null,
     };
     editError.value = '';
     editErrors.value = {};
     showEditModal.value = true;
+}
+
+async function replacePromotionProducts() {
+    if (selectedPromotion.value?.status !== 'EN-PROCESO' || !editForm.value.products) {
+        return;
+    }
+
+    const confirmed = window.confirm(
+        'Se eliminaran todos los productos actuales de la promocion y se reemplazaran por los productos del Excel. ¿Desea continuar?',
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    replacingProducts.value = true;
+    editError.value = '';
+    editErrors.value = {};
+    const payload = new FormData();
+    payload.append('products', editForm.value.products);
+
+    try {
+        const response = await window.axios.post(
+            `/dashboard-api/promotions/${selectedPromotion.value.id}/products`,
+            payload,
+            { headers: { 'Content-Type': 'multipart/form-data' } },
+        );
+        const inserted = response.data.data?.insertedCount ?? 0;
+        window.alert(`Productos reemplazados correctamente. Se insertaron ${inserted} producto(s).`);
+        editForm.value.products = null;
+        if (editProductsInput.value) {
+            editProductsInput.value.value = '';
+        }
+        await fetchPromotions();
+        selectedPromotion.value = promotions.value.find((item) => item.id === selectedPromotion.value?.id) || selectedPromotion.value;
+    } catch (exception) {
+        editError.value = exception.response?.data?.message || 'No fue posible reemplazar los productos.';
+        editErrors.value = exception.response?.data?.errors || {};
+    } finally {
+        replacingProducts.value = false;
+    }
 }
 
 function openPromotionAssets(promotion) {
@@ -937,6 +982,7 @@ onMounted(fetchPromotions);
                                 </label>
                             </div>
                         </section>
+
                     </div>
 
                     <div class="flex items-center justify-end gap-3 border-t px-6 py-4" style="border-color: var(--stj-border);">
@@ -1091,6 +1137,37 @@ onMounted(fetchPromotions);
                                     >
                                     <span v-if="editFieldError('endAt')" class="stj-field-error">{{ editFieldError('endAt') }}</span>
                                 </label>
+                            </div>
+                        </section>
+
+                        <section
+                            v-if="selectedPromotion.status === 'EN-PROCESO' && selectedPromotion.type !== 'TODO'"
+                            class="mt-8"
+                        >
+                            <h3 class="app-text text-base font-semibold">Editar productos</h3>
+                            <p class="app-muted mt-1 text-sm">
+                                El nuevo Excel reemplazara todos los productos actualmente asociados a la promocion.
+                            </p>
+                            <div class="mt-4 flex flex-wrap items-end gap-3">
+                                <label class="min-w-0 flex-1 text-sm font-semibold app-muted">
+                                    Excel productos
+                                    <input
+                                        ref="editProductsInput"
+                                        class="stj-input mt-2"
+                                        type="file"
+                                        accept=".xlsx,.csv,text/csv"
+                                        @change="editForm.products = $event.target.files?.[0] || null"
+                                    >
+                                    <span v-if="editFieldError('products')" class="stj-field-error">{{ editFieldError('products') }}</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    class="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-60"
+                                    :disabled="replacingProducts || !editForm.products"
+                                    @click="replacePromotionProducts"
+                                >
+                                    {{ replacingProducts ? 'Reemplazando...' : 'Reemplazar productos' }}
+                                </button>
                             </div>
                         </section>
                     </div>

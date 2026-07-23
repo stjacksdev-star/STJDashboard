@@ -15,12 +15,17 @@ class CasAuthService
     {
         $baseUrl = rtrim((string) config('stj.cas.base_url'), '/');
 
-        return $baseUrl.'?'.http_build_query([
+        $parameters = [
             'service' => config('stj.cas.signature'),
             'url' => $callbackUrl,
             'token' => Str::random(32),
-            'redirect' => 'slf',
-        ]);
+        ];
+
+        if (filled(config('stj.cas.redirect'))) {
+            $parameters['redirect'] = config('stj.cas.redirect');
+        }
+
+        return $baseUrl.'?'.http_build_query($parameters);
     }
 
     public function callbackUrl(): string

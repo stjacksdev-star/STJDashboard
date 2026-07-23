@@ -1040,7 +1040,7 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
-    public function createPromotion(array $data, ?UploadedFile $products = null): array
+    public function createPromotion(array $data, ?UploadedFile $products = null, array $actor = []): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
@@ -1064,6 +1064,7 @@ class DashboardApiClient
             'percentage' => $data['percentage'] ?? null,
             'startAt' => $data['startAt'],
             'endAt' => $data['endAt'],
+            'actor' => $actor,
         ]);
 
         $response->throw();
@@ -1090,12 +1091,32 @@ class DashboardApiClient
     }
 
     /**
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function replacePromotionProducts(int $promotion, UploadedFile $products, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->attach('products', fopen($products->getRealPath(), 'rb'), $products->getClientOriginalName())
+            ->post("/dashboard/promotions/{$promotion}/products", ['actor' => $actor]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      *
      * @throws RequestException
      */
-    public function createPromotionAsset(int $promotion, array $data, UploadedFile $image, ?UploadedFile $mobileImage = null): array
+    public function createPromotionAsset(int $promotion, array $data, UploadedFile $image, ?UploadedFile $mobileImage = null, array $actor = []): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
@@ -1116,6 +1137,7 @@ class DashboardApiClient
             'startAt' => $data['startAt'],
             'endAt' => $data['endAt'],
             'title' => $data['title'] ?? null,
+            'actor' => $actor,
         ]);
 
         $response->throw();
@@ -1129,7 +1151,7 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
-    public function updatePromotionAsset(int $asset, array $data, ?UploadedFile $image = null, ?UploadedFile $mobileImage = null): array
+    public function updatePromotionAsset(int $asset, array $data, ?UploadedFile $image = null, ?UploadedFile $mobileImage = null, array $actor = []): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
@@ -1153,6 +1175,7 @@ class DashboardApiClient
             'startAt' => $data['startAt'],
             'endAt' => $data['endAt'],
             'title' => $data['title'] ?? null,
+            'actor' => $actor,
         ]);
 
         $response->throw();
@@ -1163,13 +1186,13 @@ class DashboardApiClient
     /**
      * @throws RequestException
      */
-    public function deletePromotionAsset(int $asset): void
+    public function deletePromotionAsset(int $asset, array $actor = []): void
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
             ->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()
-            ->delete("/dashboard/promotions/assets/{$asset}");
+            ->delete("/dashboard/promotions/assets/{$asset}", ['actor' => $actor]);
 
         $response->throw();
     }
@@ -1179,14 +1202,14 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
-    public function updatePromotionHeader(int $promotion, UploadedFile $header): array
+    public function updatePromotionHeader(int $promotion, UploadedFile $header, array $actor = []): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
             ->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()
             ->attach('header', fopen($header->getRealPath(), 'rb'), $header->getClientOriginalName())
-            ->post("/dashboard/promotions/{$promotion}/header");
+            ->post("/dashboard/promotions/{$promotion}/header", ['actor' => $actor]);
 
         $response->throw();
 
@@ -1199,10 +1222,11 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
-    public function updatePromotionSchedule(int $id, array $data): array
+    public function updatePromotionSchedule(int $id, array $data, array $actor = []): array
     {
         $payload = [
             'commercialName' => $data['commercialName'] ?? null,
+            'actor' => $actor,
         ];
 
         if (array_key_exists('startAt', $data)) {

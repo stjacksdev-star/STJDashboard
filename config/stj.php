@@ -7,6 +7,7 @@ return [
         'signature' => env('STJ_CAS_SIGNATURE'),
         'origin' => env('STJ_CAS_ORIGIN', env('APP_URL', 'http://localhost')),
         'callback_url' => env('STJ_CAS_CALLBACK_URL'),
+        'redirect' => env('STJ_CAS_REDIRECT'),
         'timeout' => (int) env('STJ_CAS_TIMEOUT', 12),
     ],
     'api' => [

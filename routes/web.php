@@ -46,6 +46,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.promotions.store');
     Route::post('/dashboard-api/promotions/{promotion}/schedule', [PromotionController::class, 'updateSchedule'])
         ->name('dashboard-api.promotions.schedule.update');
+    Route::post('/dashboard-api/promotions/{promotion}/products', [PromotionController::class, 'replaceProducts'])
+        ->name('dashboard-api.promotions.products.replace');
     Route::get('/dashboard-api/promotions/{promotion}/assets', [PromotionController::class, 'assets'])
         ->name('dashboard-api.promotions.assets.index');
     Route::post('/dashboard-api/promotions/{promotion}/assets', [PromotionController::class, 'storeAsset'])

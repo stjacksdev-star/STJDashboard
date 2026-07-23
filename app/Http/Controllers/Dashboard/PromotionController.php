@@ -67,7 +67,7 @@ class PromotionController extends Controller
         try {
             return response()->json([
                 'ok' => true,
-                'data' => $api->createPromotion($validated, $request->file('products')),
+                'data' => $api->createPromotion($validated, $request->file('products'), $this->actor($request)),
                 'message' => 'Promocion creada correctamente.',
             ]);
         } catch (RequestException $exception) {
@@ -125,7 +125,7 @@ class PromotionController extends Controller
         try {
             return response()->json([
                 'ok' => true,
-                'data' => $api->updatePromotionSchedule($promotion, $validated),
+                'data' => $api->updatePromotionSchedule($promotion, $validated, $this->actor($request)),
                 'message' => 'Horario de promocion actualizado correctamente.',
             ]);
         } catch (RequestException $exception) {
@@ -156,6 +156,33 @@ class PromotionController extends Controller
         }
     }
 
+    public function replaceProducts(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $this->canAccessPromotion($api, $countryAccess, $user, $promotion)) {
+            return $this->countryForbidden();
+        }
+
+        $request->validate([
+            'products' => ['required', 'file', 'max:5120'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->replacePromotionProducts($promotion, $request->file('products'), $this->actor($request)),
+                'message' => 'Productos de la promocion reemplazados correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible reemplazar los productos en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     public function storeAsset(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
@@ -172,6 +199,7 @@ class PromotionController extends Controller
                     $validated,
                     $request->file('image'),
                     $request->file('mobileImage'),
+                    $this->actor($request),
                 ),
                 'message' => 'Asset creado correctamente.',
             ]);
@@ -196,6 +224,7 @@ class PromotionController extends Controller
                     $validated,
                     $request->file('image'),
                     $request->file('mobileImage'),
+                    $this->actor($request),
                 ),
                 'message' => 'Asset actualizado correctamente.',
             ]);
@@ -208,10 +237,10 @@ class PromotionController extends Controller
         }
     }
 
-    public function destroyAsset(int $asset, DashboardApiClient $api): JsonResponse
+    public function destroyAsset(Request $request, int $asset, DashboardApiClient $api): JsonResponse
     {
         try {
-            $api->deletePromotionAsset($asset);
+            $api->deletePromotionAsset($asset, $this->actor($request));
 
             return response()->json([
                 'ok' => true,
@@ -258,7 +287,7 @@ class PromotionController extends Controller
         try {
             return response()->json([
                 'ok' => true,
-                'data' => $api->updatePromotionHeader($promotion, $request->file('header')),
+                'data' => $api->updatePromotionHeader($promotion, $request->file('header'), $this->actor($request)),
                 'message' => 'Banner de promocion actualizado correctamente.',
             ]);
         } catch (RequestException $exception) {
@@ -288,5 +317,17 @@ class PromotionController extends Controller
 
                 return $countryAccess->canAccessCountry($user, $country['id'] ?? $country['code'] ?? null);
             });
+    }
+
+    private function actor(Request $request): array
+    {
+        $user = (array) $request->session()->get('stj.user', []);
+
+        return [
+            'id' => $user['idUser'] ?? $user['id'] ?? null,
+            'name' => $user['nombre'] ?? $user['name'] ?? null,
+            'email' => $user['correo'] ?? $user['email'] ?? null,
+            'username' => $user['usuario'] ?? $user['username'] ?? null,
+        ];
     }
 }

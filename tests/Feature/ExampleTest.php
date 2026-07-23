@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 // use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\CasAuthService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -68,5 +69,25 @@ class ExampleTest extends TestCase
         $response
             ->assertRedirect(route('login'))
             ->assertSessionHas('status.message', 'CAS retorno al dashboard, pero no envio token para validar la sesion.');
+    }
+
+    public function test_cas_login_url_only_includes_redirect_when_configured(): void
+    {
+        config([
+            'stj.cas.base_url' => 'https://cas.stjacks.com',
+            'stj.cas.signature' => 'test-signature',
+            'stj.cas.redirect' => null,
+        ]);
+
+        $cas = app(CasAuthService::class);
+        parse_str((string) parse_url($cas->loginUrl('https://dashboard.stjacks.com/login'), PHP_URL_QUERY), $productionQuery);
+
+        $this->assertArrayNotHasKey('redirect', $productionQuery);
+
+        config(['stj.cas.redirect' => 'slf']);
+        parse_str((string) parse_url($cas->loginUrl('http://127.0.0.1:8001/login'), PHP_URL_QUERY), $localQuery);
+
+        $this->assertSame('slf', $localQuery['redirect'] ?? null);
+        $this->assertSame('http://127.0.0.1:8001/login', $localQuery['url'] ?? null);
     }
 }
