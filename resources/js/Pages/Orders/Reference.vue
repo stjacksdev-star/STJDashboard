@@ -106,6 +106,7 @@ const paymentIsCard = computed(() => paymentType.value === 'TARJETA');
 const paymentIsCash = computed(() => paymentType.value === 'EFECTIVO');
 const processRefund = computed(() => paymentIsCard.value ? Math.max(0, -processDifference.value) : 0);
 const processCharge = computed(() => Math.max(0, processDifference.value));
+const refundMinimum = 0.05;
 const processChargeTolerance = 0.02;
 const cardPaymentIncreaseTolerance = 0.05;
 const editingProduct = computed(() =>
@@ -138,14 +139,22 @@ const processImpact = computed(() => {
             };
         }
 
+        if (processRefund.value >= refundMinimum) {
+            return {
+                type: 'refund',
+                title: 'Pedido anulado por inventario',
+                message: `Todos los articulos estan en cero. El pedido quedara anulado y se registrara una devolucion pendiente por ${currency.value} ${formatMoney(processRefund.value)}.`,
+            };
+        }
+
         return {
-            type: 'refund',
+            type: 'ok',
             title: 'Pedido anulado por inventario',
-            message: `Todos los articulos estan en cero. El pedido quedara anulado y se registrara una devolucion pendiente por ${currency.value} ${formatMoney(processRefund.value)}.`,
+            message: 'Todos los articulos estan en cero. El pedido quedara anulado sin registrar devolucion.',
         };
     }
 
-    if (processRefund.value >= 0.01) {
+    if (processRefund.value >= refundMinimum) {
         return {
             type: 'refund',
             title: 'Habra devolucion',
@@ -180,9 +189,9 @@ const processImpact = computed(() => {
     }
 
     return {
-        type: 'ok',
-        title: 'Sin diferencia de monto',
-        message: 'El detalle coincide con el total aprobado.',
+        type: 'none',
+        title: '',
+        message: '',
     };
 });
 const statusSteps = computed(() => {
@@ -405,7 +414,7 @@ async function processOrder() {
         return;
     }
 
-    if (processRefund.value >= 0.01 && processForm.value.refundObservation.trim().length < 20) {
+    if (processRefund.value >= refundMinimum && processForm.value.refundObservation.trim().length < 20) {
         processError.value = 'Debe ingresar una observacion de devolucion de al menos 20 caracteres.';
         return;
     }
@@ -1430,6 +1439,7 @@ onMounted(() => {
 
                     <form class="px-6 py-5" @submit.prevent="processOrder">
                         <div
+                            v-if="processImpact.type !== 'none'"
                             :class="[
                                 'rounded-md border px-4 py-3 text-sm font-semibold',
                                 processImpact.type === 'refund'
@@ -1468,7 +1478,7 @@ onMounted(() => {
                             />
                         </label>
 
-                        <label v-if="processRefund >= 0.01" class="mt-5 block text-sm font-semibold">
+                        <label v-if="processRefund >= refundMinimum" class="mt-5 block text-sm font-semibold">
                             <span class="app-muted">Motivo u observacion de devolucion</span>
                             <textarea
                                 v-model="processForm.refundObservation"
