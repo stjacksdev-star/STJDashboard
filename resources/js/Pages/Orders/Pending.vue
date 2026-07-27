@@ -36,7 +36,8 @@ const resolvedStoreLabel = computed(() =>
 const filters = ref({
     country: String(user.value?.idPais || ''),
     store: '',
-    date: today(),
+    startDate: today(),
+    endDate: today(),
 });
 
 const columns = [
@@ -105,8 +106,8 @@ async function fetchPendingOrders() {
         };
 
         if (!hasAssignedStore.value) {
-            params.startDate = filters.value.date;
-            params.endDate = filters.value.date;
+            params.startDate = filters.value.startDate;
+            params.endDate = filters.value.endDate;
         }
 
         const response = await window.axios.get('/dashboard-api/sales/orders', { params });
@@ -303,7 +304,7 @@ watch(
 
                 <form
                     v-if="showFilters"
-                    class="mt-6 grid gap-4 lg:grid-cols-[1.1fr_1.1fr_1fr_auto]"
+                    class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-[1.1fr_1.1fr_1fr_1fr_auto]"
                     @submit.prevent="submitFilters"
                 >
                     <label class="block text-sm font-semibold">
@@ -334,9 +335,19 @@ watch(
                     </label>
 
                     <label class="block text-sm font-semibold">
-                        <span class="app-muted">Fecha</span>
+                        <span class="app-muted">Fecha inicial</span>
                         <input
-                            v-model="filters.date"
+                            v-model="filters.startDate"
+                            type="date"
+                            class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
+                            required
+                        />
+                    </label>
+
+                    <label class="block text-sm font-semibold">
+                        <span class="app-muted">Fecha final</span>
+                        <input
+                            v-model="filters.endDate"
                             type="date"
                             class="app-surface app-text mt-2 h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-4"
                             required
@@ -345,7 +356,7 @@ watch(
 
                     <button
                         type="submit"
-                        class="app-primary inline-flex h-11 items-center justify-center gap-2 rounded-md px-5 text-sm font-semibold shadow-sm disabled:opacity-60"
+                        class="app-primary inline-flex h-11 items-center justify-center gap-2 self-end rounded-md px-5 text-sm font-semibold shadow-sm disabled:opacity-60"
                         :disabled="loading"
                     >
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
