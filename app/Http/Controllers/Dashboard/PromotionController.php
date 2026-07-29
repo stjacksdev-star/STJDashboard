@@ -48,6 +48,9 @@ class PromotionController extends Controller
             'commercialName' => ['nullable', 'string', 'max:255'],
             'origin' => ['required', Rule::in(['TODO', 'WEB', 'APP'])],
             'checkoutType' => ['nullable', Rule::in(['TODO', 'D', 'T'])],
+            'storeScope' => ['nullable', 'required_unless:checkoutType,D', 'prohibited_if:checkoutType,D', Rule::in(['TODAS', 'SELECCIONADAS'])],
+            'stores' => ['exclude_unless:storeScope,SELECCIONADAS', 'required', 'array', 'min:1'],
+            'stores.*' => ['required', 'integer', 'distinct'],
             'type' => ['required', Rule::in(['TODO', 'SKU'])],
             'promotionType' => ['required', Rule::in(['DESCUENTO', 'CONDICION-SKU', 'PUNTO-PRECIO', 'DESCUENTO-SKU'])],
             'restriction' => ['nullable', Rule::in(['21/2', '2x1', '2doPrecio', '2xPP'])],
@@ -74,6 +77,31 @@ class PromotionController extends Controller
             return response()->json([
                 'ok' => false,
                 'message' => $exception->response?->json('message') ?: 'No fue posible crear la promocion en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function stores(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+        ]);
+        $user = (array) $request->session()->get('stj.user', []);
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->promotionStores($validated['country']),
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible obtener las tiendas desde stj-api.',
                 'errors' => $exception->response?->json('errors') ?: [],
             ], $exception->response?->status() ?: 502);
         }
@@ -132,6 +160,38 @@ class PromotionController extends Controller
             return response()->json([
                 'ok' => false,
                 'message' => $exception->response?->json('message') ?: 'No fue posible actualizar el horario en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function updateStores(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
+            return $this->countryForbidden();
+        }
+
+        $validated = $request->validate([
+            'storeScope' => ['present', 'nullable', Rule::in(['TODAS', 'SELECCIONADAS'])],
+            'stores' => ['exclude_unless:storeScope,SELECCIONADAS', 'required', 'array', 'min:1'],
+            'stores.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->updatePromotionStores(
+                    $promotion,
+                    $validated['storeScope'],
+                    $validated['stores'] ?? [],
+                    $this->actor($request),
+                ),
+                'message' => 'Tiendas de la promocion actualizadas correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible actualizar las tiendas en stj-api.',
                 'errors' => $exception->response?->json('errors') ?: [],
             ], $exception->response?->status() ?: 502);
         }

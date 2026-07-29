@@ -118,4 +118,84 @@ class ExampleTest extends TestCase
             && str_contains($request->body(), 'name="actor[name]"')
             && str_contains($request->body(), 'Usuario Dashboard'));
     }
+
+    public function test_promotion_creation_sends_store_scope_and_store_ids(): void
+    {
+        config([
+            'stj.api.base_url' => 'https://api.example.test/api',
+            'stj.api.dashboard_token' => 'test-token',
+        ]);
+
+        Http::fake([
+            'https://api.example.test/api/dashboard/promotions' => Http::response([
+                'data' => ['id' => 2000],
+            ]),
+        ]);
+
+        app(DashboardApiClient::class)->createPromotion([
+            'country' => 'SV',
+            'name' => 'Promocion tiendas',
+            'origin' => 'TODO',
+            'checkoutType' => 'T',
+            'storeScope' => 'SELECCIONADAS',
+            'stores' => [12, 15],
+            'type' => 'TODO',
+            'promotionType' => 'DESCUENTO',
+            'startAt' => '2026-08-01 08:00:00',
+            'endAt' => '2026-08-02 20:00:00',
+        ]);
+
+        Http::assertSent(fn (Request $request) =>
+            $request['storeScope'] === 'SELECCIONADAS'
+            && $request['stores'] === [12, 15]
+        );
+    }
+
+    public function test_promotion_store_query_uses_dashboard_specific_endpoint(): void
+    {
+        config([
+            'stj.api.base_url' => 'https://api.example.test/api',
+            'stj.api.dashboard_token' => 'test-token',
+        ]);
+
+        Http::fake([
+            'https://api.example.test/api/dashboard/promotions/stores?country=SV' => Http::response([
+                'data' => [['id' => 12, 'code' => '001', 'name' => 'Centro']],
+            ]),
+        ]);
+
+        $stores = app(DashboardApiClient::class)->promotionStores('SV');
+
+        $this->assertSame(12, $stores[0]['id']);
+        Http::assertSent(fn (Request $request) =>
+            $request->url() === 'https://api.example.test/api/dashboard/promotions/stores?country=SV'
+        );
+    }
+
+    public function test_promotion_store_update_uses_ids_and_dashboard_endpoint(): void
+    {
+        config([
+            'stj.api.base_url' => 'https://api.example.test/api',
+            'stj.api.dashboard_token' => 'test-token',
+        ]);
+
+        Http::fake([
+            'https://api.example.test/api/dashboard/promotions/1998/stores' => Http::response([
+                'data' => ['id' => 1998, 'storeScope' => 'SELECCIONADAS'],
+            ]),
+        ]);
+
+        app(DashboardApiClient::class)->updatePromotionStores(
+            1998,
+            'SELECCIONADAS',
+            [4, 9],
+            ['id' => '25'],
+        );
+
+        Http::assertSent(fn (Request $request) =>
+            $request->url() === 'https://api.example.test/api/dashboard/promotions/1998/stores'
+            && $request['storeScope'] === 'SELECCIONADAS'
+            && $request['stores'] === [4, 9]
+        );
+    }
 }

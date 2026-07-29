@@ -1061,6 +1061,8 @@ class DashboardApiClient
             'commercialName' => $data['commercialName'] ?? null,
             'origin' => $data['origin'],
             'checkoutType' => $data['checkoutType'] ?? 'TODO',
+            'storeScope' => $data['storeScope'] ?? null,
+            'stores' => $data['stores'] ?? [],
             'type' => $data['type'],
             'promotionType' => $data['promotionType'],
             'restriction' => $data['restriction'] ?? null,
@@ -1070,6 +1072,51 @@ class DashboardApiClient
             'endAt' => $data['endAt'],
             ...$actorPayload,
         ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @return array<int, array{id: int, code: string, name: string}>
+     *
+     * @throws RequestException
+     */
+    public function promotionStores(string $country): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/promotions/stores', ['country' => $country]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
+     * @param array<int, int> $stores
+     * @return array<string, mixed>
+     *
+     * @throws RequestException
+     */
+    public function updatePromotionStores(
+        int $promotion,
+        ?string $storeScope,
+        array $stores,
+        array $actor = [],
+    ): array {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post("/dashboard/promotions/{$promotion}/stores", [
+                'storeScope' => $storeScope,
+                'stores' => $stores,
+                'actor' => $actor,
+            ]);
 
         $response->throw();
 

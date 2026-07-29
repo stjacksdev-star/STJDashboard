@@ -28,6 +28,12 @@ const creating = ref(false);
 const createError = ref('');
 const createErrors = ref({});
 const createForm = ref(defaultCreateForm());
+const promotionStores = ref([]);
+const storesLoading = ref(false);
+const storesError = ref('');
+const showStoreSelectorModal = ref(false);
+const storeSearch = ref('');
+const storeSelectorContext = ref('create');
 const showEditModal = ref(false);
 const editing = ref(false);
 const assetSaving = ref(false);
@@ -50,6 +56,8 @@ const editForm = ref({
     commercialName: '',
     startAt: '',
     endAt: '',
+    storeScope: null,
+    stores: [],
     products: null,
 });
 const replacingProducts = ref(false);
@@ -132,6 +140,39 @@ const canEditCreatePercentage = computed(() => {
 
     return createForm.value.promotionType === 'DESCUENTO' && createForm.value.type === 'TODO';
 });
+const usesStoreScope = computed(() => ['TODO', 'T'].includes(createForm.value.checkoutType));
+const canSelectPromotionStores = computed(() =>
+    usesStoreScope.value && createForm.value.storeScope === 'SELECCIONADAS',
+);
+const filteredPromotionStores = computed(() => {
+    const search = storeSearch.value.trim().toLocaleLowerCase();
+
+    if (!search) {
+        return promotionStores.value;
+    }
+
+    return promotionStores.value.filter((store) =>
+        `${store.code} ${store.name}`.toLocaleLowerCase().includes(search),
+    );
+});
+const selectedStoresSummary = computed(() => {
+    const count = createForm.value.stores.length;
+
+    if (!createForm.value.country) {
+        return 'Seleccione primero un pais';
+    }
+
+    if (storesLoading.value) {
+        return 'Cargando tiendas...';
+    }
+
+    return count === 0
+        ? 'Seleccionar tiendas'
+        : `${count} tienda${count === 1 ? '' : 's'} seleccionada${count === 1 ? '' : 's'}`;
+});
+const selectorStoreIds = computed(() =>
+    storeSelectorContext.value === 'edit' ? editForm.value.stores : createForm.value.stores,
+);
 
 async function fetchPromotions() {
     loading.value = true;
@@ -161,9 +202,16 @@ async function fetchPromotions() {
 }
 
 async function createPromotion() {
-    creating.value = true;
     createError.value = '';
     createErrors.value = {};
+
+    if (canSelectPromotionStores.value && createForm.value.stores.length === 0) {
+        createErrors.value = { stores: ['Debe seleccionar al menos una tienda.'] };
+        openStoreSelector();
+        return;
+    }
+
+    creating.value = true;
 
     const payload = new FormData();
     Object.entries(createForm.value).forEach(([key, value]) => {
@@ -172,6 +220,11 @@ async function createPromotion() {
                 payload.append(key, value);
             }
 
+            return;
+        }
+
+        if (key === 'stores') {
+            value.forEach((storeId) => payload.append('stores[]', String(storeId)));
             return;
         }
 
@@ -194,6 +247,96 @@ async function createPromotion() {
     } finally {
         creating.value = false;
     }
+}
+
+async function fetchPromotionStores(country, context = 'create') {
+    promotionStores.value = [];
+    storesError.value = '';
+
+    const scopeApplies = context === 'edit'
+        ? selectedPromotion.value?.checkoutType !== 'D'
+        : usesStoreScope.value;
+
+    if (!country || !scopeApplies) {
+        return;
+    }
+
+    storesLoading.value = true;
+    const requestedCountry = country;
+
+    try {
+        const response = await window.axios.get('/dashboard-api/promotions/stores', {
+            params: { country: requestedCountry },
+        });
+
+        const currentCountry = context === 'edit'
+            ? selectedPromotion.value?.country?.code
+            : createForm.value.country;
+
+        if (currentCountry === requestedCountry && scopeApplies) {
+            promotionStores.value = response.data.data || [];
+        }
+    } catch (exception) {
+        const currentCountry = context === 'edit'
+            ? selectedPromotion.value?.country?.code
+            : createForm.value.country;
+
+        if (currentCountry === requestedCountry) {
+            storesError.value = exception.response?.data?.message || 'No fue posible cargar las tiendas.';
+        }
+    } finally {
+        const currentCountry = context === 'edit'
+            ? selectedPromotion.value?.country?.code
+            : createForm.value.country;
+
+        if (currentCountry === requestedCountry) {
+            storesLoading.value = false;
+        }
+    }
+}
+
+function openStoreSelector(context = 'create') {
+    const country = context === 'edit'
+        ? selectedPromotion.value?.country?.code
+        : createForm.value.country;
+
+    if (!country || storesLoading.value) {
+        return;
+    }
+
+    storeSelectorContext.value = context;
+    storeSearch.value = '';
+    showStoreSelectorModal.value = true;
+}
+
+function selectAllPromotionStores() {
+    setSelectorStoreIds(promotionStores.value.map((store) => store.id));
+}
+
+function clearPromotionStores() {
+    setSelectorStoreIds([]);
+}
+
+function isPromotionStoreSelected(storeId) {
+    return selectorStoreIds.value.includes(storeId);
+}
+
+function togglePromotionStore(storeId) {
+    if (isPromotionStoreSelected(storeId)) {
+        setSelectorStoreIds(selectorStoreIds.value.filter((id) => id !== storeId));
+        return;
+    }
+
+    setSelectorStoreIds([...selectorStoreIds.value, storeId]);
+}
+
+function setSelectorStoreIds(storeIds) {
+    if (storeSelectorContext.value === 'edit') {
+        editForm.value.stores = storeIds;
+        return;
+    }
+
+    createForm.value.stores = storeIds;
 }
 
 function openCreateModal() {
@@ -372,17 +515,23 @@ async function deletePromotionAsset(asset) {
     }
 }
 
-function openEditModal(promotion) {
+async function openEditModal(promotion) {
     selectedPromotion.value = promotion;
     editForm.value = {
         commercialName: promotion.commercialName || '',
         startAt: sqlToDatetimeLocal(promotion.startAt),
         endAt: sqlToDatetimeLocal(promotion.endAt),
+        storeScope: promotion.storeScope || (promotion.checkoutType === 'D' ? null : 'TODAS'),
+        stores: (promotion.tiendas || []).map((store) => store.id),
         products: null,
     };
     editError.value = '';
     editErrors.value = {};
     showEditModal.value = true;
+
+    if (promotion.checkoutType !== 'D') {
+        await fetchPromotionStores(promotion.country?.code, 'edit');
+    }
 }
 
 async function replacePromotionProducts() {
@@ -486,7 +635,25 @@ async function updatePromotionSchedule() {
     editError.value = '';
     editErrors.value = {};
 
+    if (
+        canEditPromotionStores.value
+        && editForm.value.storeScope === 'SELECCIONADAS'
+        && editForm.value.stores.length === 0
+    ) {
+        editErrors.value = { stores: ['Debe seleccionar al menos una tienda.'] };
+        openStoreSelector('edit');
+        editing.value = false;
+        return;
+    }
+
     try {
+        if (canEditPromotionStores.value) {
+            await window.axios.post(`/dashboard-api/promotions/${promotionId}/stores`, {
+                storeScope: editForm.value.storeScope,
+                stores: editForm.value.storeScope === 'SELECCIONADAS' ? editForm.value.stores : [],
+            });
+        }
+
         await window.axios.post(`/dashboard-api/promotions/${promotionId}/schedule`, {
             commercialName: editForm.value.commercialName,
             startAt: canEditStart.value ? editForm.value.startAt : undefined,
@@ -556,6 +723,8 @@ function defaultCreateForm() {
         commercialName: '',
         origin: 'TODO',
         checkoutType: 'TODO',
+        storeScope: 'TODAS',
+        stores: [],
         type: 'TODO',
         promotionType: 'DESCUENTO',
         restriction: '',
@@ -672,6 +841,14 @@ const canEditStart = computed(() => selectedPromotion.value?.status === 'PENDIEN
 const canEditEnd = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(selectedPromotion.value?.status));
 const canEditSchedule = computed(() => canEditStart.value || canEditEnd.value);
 const canEditPromotion = computed(() => selectedPromotion.value?.status !== 'FINALIZADA');
+const canEditPromotionStores = computed(() =>
+    selectedPromotion.value?.status === 'PENDIENTE'
+    && selectedPromotion.value?.checkoutType !== 'D',
+);
+const keepsSelectedStoreScope = computed(() =>
+    selectedPromotion.value?.storeScope === 'SELECCIONADAS'
+    && (selectedPromotion.value?.tiendas?.length || 0) > 0,
+);
 const canManagePromotionAssets = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(assetPromotion.value?.status));
 const currentUserId = computed(() => page.props.auth?.user?.idUser || page.props.auth?.user?.id || '');
 const activatePromotionUrl = computed(() => legacyPromotionTaskUrl('activarPromocion'));
@@ -726,6 +903,60 @@ watch([selectedCountry, selectedStatus], fetchPromotions);
 watch(
     () => [createForm.value.type, createForm.value.promotionType, createForm.value.restriction],
     applyCreatePromotionRules,
+);
+watch(
+    () => createForm.value.checkoutType,
+    (checkoutType) => {
+        createForm.value.stores = [];
+
+        if (checkoutType === 'D') {
+            createForm.value.storeScope = null;
+            promotionStores.value = [];
+            storesError.value = '';
+            return;
+        }
+
+        createForm.value.storeScope = createForm.value.storeScope || 'TODAS';
+        fetchPromotionStores(createForm.value.country);
+    },
+);
+watch(
+    () => createForm.value.storeScope,
+    (scope) => {
+        if (scope !== 'SELECCIONADAS') {
+            createForm.value.stores = [];
+            showStoreSelectorModal.value = false;
+        }
+    },
+);
+watch(showCreateModal, (visible) => {
+    if (!visible) {
+        showStoreSelectorModal.value = false;
+    }
+});
+watch(
+    () => editForm.value.storeScope,
+    (scope) => {
+        if (scope !== 'SELECCIONADAS') {
+            editForm.value.stores = [];
+
+            if (storeSelectorContext.value === 'edit') {
+                showStoreSelectorModal.value = false;
+            }
+        }
+    },
+);
+watch(showEditModal, (visible) => {
+    if (!visible && storeSelectorContext.value === 'edit') {
+        showStoreSelectorModal.value = false;
+    }
+});
+watch(
+    () => createForm.value.country,
+    (country) => {
+        createForm.value.stores = [];
+        fetchPromotionStores(country);
+    },
 );
 onMounted(fetchPromotions);
 </script>
@@ -893,6 +1124,40 @@ onMounted(fetchPromotions);
                                 </label>
 
                                 <label class="block">
+                                    <span class="app-muted text-sm font-medium">Alcance en tiendas</span>
+                                    <select
+                                        v-model="createForm.storeScope"
+                                        :disabled="!usesStoreScope"
+                                        :required="usesStoreScope"
+                                        class="stj-input mt-2"
+                                    >
+                                        <option :value="null">No aplica</option>
+                                        <option value="TODAS">TODAS LAS TIENDAS</option>
+                                        <option value="SELECCIONADAS">TIENDAS SELECCIONADAS</option>
+                                    </select>
+                                    <span v-if="fieldError('storeScope')" class="stj-field-error">{{ fieldError('storeScope') }}</span>
+                                </label>
+
+                                <div v-if="canSelectPromotionStores" class="block md:col-span-2">
+                                    <span class="app-muted text-sm font-medium">Tiendas del pais</span>
+                                    <button
+                                        type="button"
+                                        :disabled="storesLoading || !createForm.country"
+                                        class="stj-input mt-2 flex items-center justify-between text-left disabled:cursor-not-allowed"
+                                        @click="openStoreSelector"
+                                    >
+                                        <span>{{ selectedStoresSummary }}</span>
+                                        <span aria-hidden="true">›</span>
+                                    </button>
+                                    <span class="app-muted mt-1 block text-xs">
+                                        Solo se muestran tiendas habilitadas del pais seleccionado.
+                                    </span>
+                                    <span v-if="storesError" class="stj-field-error">{{ storesError }}</span>
+                                    <span v-if="fieldError('stores')" class="stj-field-error">{{ fieldError('stores') }}</span>
+                                    <span v-if="fieldError('stores.0')" class="stj-field-error">{{ fieldError('stores.0') }}</span>
+                                </div>
+
+                                <label class="block">
                                     <span class="app-muted text-sm font-medium">Tipo</span>
                                     <select v-model="createForm.type" required class="stj-input mt-2">
                                         <option v-for="type in availableCreateTypes" :key="type" :value="type">
@@ -1008,6 +1273,103 @@ onMounted(fetchPromotions);
 
         <Teleport to="body">
             <div
+                v-if="showStoreSelectorModal"
+                class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4 py-6"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="store-selector-title"
+                @click.self="showStoreSelectorModal = false"
+            >
+                <div class="app-surface flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-2xl">
+                    <div class="flex items-center justify-between gap-4 border-b px-5 py-4" style="border-color: var(--stj-border);">
+                        <div>
+                            <h3 id="store-selector-title" class="app-text text-lg font-semibold">Seleccionar tiendas</h3>
+                            <p class="app-muted mt-1 text-xs">
+                                {{ selectorStoreIds.length }} de {{ promotionStores.length }} seleccionadas
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="app-muted rounded-md border px-3 py-2 text-sm font-semibold"
+                            style="border-color: var(--stj-border);"
+                            @click="showStoreSelectorModal = false"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+
+                    <div class="border-b px-5 py-3" style="border-color: var(--stj-border);">
+                        <input
+                            v-model="storeSearch"
+                            class="stj-input"
+                            type="search"
+                            placeholder="Buscar por nombre o codigo"
+                            autofocus
+                        >
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                class="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white"
+                                @click="selectAllPromotionStores"
+                            >
+                                Seleccionar todas
+                            </button>
+                            <button
+                                type="button"
+                                class="app-muted rounded-md border px-3 py-2 text-xs font-semibold"
+                                style="border-color: var(--stj-border);"
+                                @click="clearPromotionStores"
+                            >
+                                Limpiar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-y-auto p-4">
+                        <div
+                            v-if="filteredPromotionStores.length"
+                            class="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        >
+                            <label
+                                v-for="store in filteredPromotionStores"
+                                :key="store.id"
+                                class="app-text flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition hover:border-blue-400 hover:bg-blue-50/50"
+                                :class="{ 'border-blue-500 bg-blue-50/70': isPromotionStoreSelected(store.id) }"
+                                :style="{ borderColor: isPromotionStoreSelected(store.id) ? '#3b82f6' : 'var(--stj-border)' }"
+                            >
+                                <input
+                                    type="checkbox"
+                                    class="h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600"
+                                    :checked="isPromotionStoreSelected(store.id)"
+                                    @change="togglePromotionStore(store.id)"
+                                >
+                                <span class="min-w-0">
+                                    <strong class="block truncate">{{ store.name }}</strong>
+                                    <span class="app-muted text-xs">Codigo {{ store.code }}</span>
+                                </span>
+                            </label>
+                        </div>
+                        <div v-else class="app-muted py-8 text-center text-sm">
+                            No se encontraron tiendas.
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3 border-t px-5 py-3" style="border-color: var(--stj-border);">
+                        <span class="app-muted text-sm">{{ selectorStoreIds.length }} seleccionadas</span>
+                        <button
+                            type="button"
+                            class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+                            @click="showStoreSelectorModal = false"
+                        >
+                            Confirmar seleccion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <Teleport to="body">
+            <div
                 v-if="showEditModal && selectedPromotion"
                 class="stj-modal-backdrop"
                 role="dialog"
@@ -1085,6 +1447,54 @@ onMounted(fetchPromotions);
                                     <span class="app-muted text-sm font-medium">Plataforma</span>
                                     <input :value="selectedPromotion.origin" readonly class="stj-input stj-input-readonly mt-2" type="text">
                                 </label>
+
+                                <label class="block">
+                                    <span class="app-muted text-sm font-medium">Aplica</span>
+                                    <input
+                                        :value="selectedPromotion.checkoutType === 'D' ? 'SOLO DOMICILIO' : selectedPromotion.checkoutType === 'T' ? 'SOLO TIENDA' : 'TODO'"
+                                        readonly
+                                        class="stj-input stj-input-readonly mt-2"
+                                        type="text"
+                                    >
+                                </label>
+
+                                <label v-if="selectedPromotion.checkoutType !== 'D'" class="block">
+                                    <span class="app-muted text-sm font-medium">Alcance en tiendas</span>
+                                    <select
+                                        v-model="editForm.storeScope"
+                                        class="stj-input mt-2"
+                                        :class="{ 'stj-input-readonly': !canEditPromotionStores }"
+                                        :disabled="!canEditPromotionStores"
+                                    >
+                                        <option v-if="!keepsSelectedStoreScope" value="TODAS">TODAS LAS TIENDAS</option>
+                                        <option value="SELECCIONADAS">TIENDAS SELECCIONADAS</option>
+                                    </select>
+                                    <span v-if="editFieldError('storeScope')" class="stj-field-error">{{ editFieldError('storeScope') }}</span>
+                                </label>
+
+                                <div
+                                    v-if="selectedPromotion.checkoutType !== 'D' && editForm.storeScope === 'SELECCIONADAS'"
+                                    class="block md:col-span-2"
+                                >
+                                    <span class="app-muted text-sm font-medium">Tiendas seleccionadas</span>
+                                    <button
+                                        v-if="canEditPromotionStores"
+                                        type="button"
+                                        class="stj-input mt-2 flex items-center justify-between text-left"
+                                        :disabled="storesLoading"
+                                        @click="openStoreSelector('edit')"
+                                    >
+                                        <span>
+                                            {{ storesLoading ? 'Cargando tiendas...' : `${editForm.stores.length} tienda${editForm.stores.length === 1 ? '' : 's'} seleccionada${editForm.stores.length === 1 ? '' : 's'}` }}
+                                        </span>
+                                        <span aria-hidden="true">›</span>
+                                    </button>
+                                    <div v-else class="stj-input stj-input-readonly mt-2">
+                                        {{ editForm.stores.length }} tienda{{ editForm.stores.length === 1 ? '' : 's' }} asociada{{ editForm.stores.length === 1 ? '' : 's' }}
+                                    </div>
+                                    <span v-if="storesError" class="stj-field-error">{{ storesError }}</span>
+                                    <span v-if="editFieldError('stores')" class="stj-field-error">{{ editFieldError('stores') }}</span>
+                                </div>
 
                                 <label class="block">
                                     <span class="app-muted text-sm font-medium">Tipo</span>
