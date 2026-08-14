@@ -5,6 +5,7 @@ use App\Http\Controllers\Dashboard\AccountingReportController;
 use App\Http\Controllers\Dashboard\AppointmentController;
 use App\Http\Controllers\Dashboard\ClaimController;
 use App\Http\Controllers\Dashboard\CollectionController;
+use App\Http\Controllers\Dashboard\CouponController;
 use App\Http\Controllers\Dashboard\OrderController;
 use App\Http\Controllers\Dashboard\PromotionController;
 use App\Http\Controllers\Dashboard\ProductCategoryController;
@@ -203,6 +204,11 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('collections.index');
     Route::get('/promociones', fn () => Inertia::render('Promotions/Index'))
         ->name('promotions.index');
+    Route::get('/cupones/mantenimiento', fn () => Inertia::render('Coupons/Index'))->name('coupons.index');
+    Route::get('/dashboard-api/coupons', [CouponController::class, 'index'])->name('dashboard-api.coupons.index');
+    Route::get('/dashboard-api/coupons/catalogs', [CouponController::class, 'catalogs'])->name('dashboard-api.coupons.catalogs');
+    Route::post('/dashboard-api/coupons', [CouponController::class, 'store'])->name('dashboard-api.coupons.store');
+    Route::put('/dashboard-api/coupons/{coupon}', [CouponController::class, 'update'])->name('dashboard-api.coupons.update');
     Route::get('/productos/categorias', fn () => Inertia::render('Products/Categories'))
         ->name('products.categories');
     Route::get('/productos/catalogo', fn () => Inertia::render('Products/Master'))
@@ -256,7 +262,6 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('settings.push-notifications');
 
     foreach ([
-        '/cupones/mantenimiento' => 'Cupones / Mantenimiento',
         '/cupones/reportes' => 'Cupones / Reportes',
         '/reportes/catalogo' => 'Reportes / Catalogo',
         '/reportes/im/venta' => 'Reportes / IM Venta',

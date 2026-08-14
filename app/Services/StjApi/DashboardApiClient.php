@@ -9,6 +9,38 @@ use Illuminate\Support\Facades\Http;
 
 class DashboardApiClient
 {
+    public function coupons(?string $country = null, ?string $status = null, ?string $search = null, int $page = 1, int $perPage = 20): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->get('/dashboard/coupons', array_filter(['country' => $country, 'status' => $status, 'search' => $search, 'page' => $page, 'perPage' => $perPage], fn ($value) => $value !== null && $value !== ''));
+        $response->throw();
+        return $response->json('data') ?? [];
+    }
+
+    public function saveCoupon(array $data, ?int $coupon = null): array
+    {
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->asJson();
+        $response = $coupon ? $request->put('/dashboard/coupons/'.$coupon, $data) : $request->post('/dashboard/coupons', $data);
+        $response->throw();
+        return $response->json('data') ?? [];
+    }
+
+    public function couponCatalogs(string $country): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->get('/dashboard/coupons/catalogs', ['country' => $country]);
+        $response->throw(); return $response->json('data') ?? [];
+    }
+
+    public function saveCouponMultipart(array $data, ?int $coupon, ?UploadedFile $products, ?UploadedFile $customers): array
+    {
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout(120)->withToken((string) config('stj.api.dashboard_token'))->acceptJson();
+        if ($products) $request = $request->attach('productsFile', fopen($products->getRealPath(), 'rb'), $products->getClientOriginalName());
+        if ($customers) $request = $request->attach('customersFile', fopen($customers->getRealPath(), 'rb'), $customers->getClientOriginalName());
+        $response = $request->post('/dashboard/coupons'.($coupon ? '/'.$coupon : ''), collect($data)->map(fn ($v) => $v === null ? '' : (string) $v)->all());
+        $response->throw(); return $response->json('data') ?? [];
+    }
+
     /**
      * @return array<string, mixed>
      *
