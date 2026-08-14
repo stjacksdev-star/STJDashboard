@@ -40,6 +40,18 @@ class CouponController extends Controller
     {
         return $this->persist($request, $api, $access, $coupon);
     }
+
+    public function status(Request $request, int $coupon, DashboardApiClient $api, UserCountryAccessService $access): JsonResponse
+    {
+        $data = $request->validate(['status' => ['required', 'in:ACTIVO,INACTIVO'], 'country' => ['required', 'string', 'max:3']]);
+        $user = (array) $request->session()->get('stj.user', []);
+        if (! $access->canAccessCountry($user, $data['country'])) return $this->forbidden();
+
+        try {
+            $couponData = $api->changeCouponStatus($coupon, $data['status'], $data['country']);
+            return response()->json(['ok' => true, 'data' => $couponData, 'message' => $data['status'] === 'INACTIVO' ? 'Cupón inactivado.' : 'Cupón activado.']);
+        } catch (RequestException $e) { return $this->apiError($e); }
+    }
     public function catalogs(Request $request, DashboardApiClient $api, UserCountryAccessService $access): JsonResponse
     {
         $country = $request->string('country')->toString(); $user = (array) $request->session()->get('stj.user', []);

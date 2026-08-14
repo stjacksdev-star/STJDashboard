@@ -209,6 +209,7 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
     Route::get('/dashboard-api/coupons/catalogs', [CouponController::class, 'catalogs'])->name('dashboard-api.coupons.catalogs');
     Route::post('/dashboard-api/coupons', [CouponController::class, 'store'])->name('dashboard-api.coupons.store');
     Route::put('/dashboard-api/coupons/{coupon}', [CouponController::class, 'update'])->name('dashboard-api.coupons.update');
+    Route::patch('/dashboard-api/coupons/{coupon}/status', [CouponController::class, 'status'])->name('dashboard-api.coupons.status');
     Route::get('/productos/categorias', fn () => Inertia::render('Products/Categories'))
         ->name('products.categories');
     Route::get('/productos/catalogo', fn () => Inertia::render('Products/Master'))

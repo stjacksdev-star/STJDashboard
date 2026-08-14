@@ -4,7 +4,7 @@ import axios from 'axios';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 
-const countries = ref([]), coupons = ref([]), loading = ref(false), saving = ref(false), error = ref(''), message = ref('');
+const countries = ref([]), coupons = ref([]), loading = ref(false), saving = ref(false), changingStatusId = ref(null), error = ref(''), message = ref('');
 const filters = reactive({ country: '', status: '', search: '', page: 1, perPage: 20 });
 const pagination = reactive({ page: 1, perPage: 20, total: 0, lastPage: 1 });
 const catalogs = reactive({ categories: [], collections: [], automaticTemplates: [] });
@@ -30,6 +30,18 @@ async function save() {
   finally { saving.value = false; }
 }
 async function loadCatalogs() { if (!form.country) return; const { data } = await axios.get('/dashboard-api/coupons/catalogs', { params: { country: form.country } }); Object.assign(catalogs, data.data); }
+async function changeStatus(coupon) {
+  const nextStatus = coupon.status === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+  const action = nextStatus === 'INACTIVO' ? 'inactivar' : 'activar';
+  if (!window.confirm(`¿Confirma que desea ${action} el cupón #${coupon.id} (${coupon.name})?`)) return;
+  changingStatusId.value = coupon.id; error.value = ''; message.value = '';
+  try {
+    const { data } = await axios.patch(`/dashboard-api/coupons/${coupon.id}/status`, { status: nextStatus, country: coupon.country.code });
+    message.value = data.message;
+    await load();
+  } catch (e) { error.value = e.response?.data?.errors ? Object.values(e.response.data.errors).flat()[0] : (e.response?.data?.message || `No fue posible ${action} el cupón.`); }
+  finally { changingStatusId.value = null; }
+}
 onMounted(load);
 watch(() => form.country, loadCatalogs);
 watch(() => filters.search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { filters.page = 1; load(); }, 350); });
@@ -88,7 +100,7 @@ const lastResult = computed(() => Math.min(pagination.page * pagination.perPage,
           <label class="text-sm">Estado<select v-model="filters.status" class="app-surface app-text mt-1 h-10 rounded-md border px-3" @change="applyFilters"><option value="">Todos los estados</option><option>ACTIVO</option><option>INACTIVO</option></select></label>
           <label class="text-sm">Mostrar<select v-model.number="filters.perPage" class="app-surface app-text mt-1 h-10 rounded-md border px-3" @change="applyFilters"><option :value="10">10</option><option :value="20">20</option><option :value="50">50</option><option :value="100">100</option></select></label>
         </div>
-        <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="app-surface-soft app-text"><tr><th class="p-3">ID</th><th class="p-3">Cupón</th><th class="p-3">País</th><th class="p-3">Beneficio</th><th class="p-3">Código</th><th class="p-3">Vigencia</th><th class="p-3">Estado</th><th class="p-3"></th></tr></thead><tbody><tr v-for="c in coupons" :key="c.id" class="border-t" style="border-color: var(--stj-border);"><td class="p-3">{{ c.id }}</td><td class="p-3"><strong>{{ c.name }}</strong><div class="app-muted text-xs">{{ c.commercialName }}</div></td><td class="p-3">{{ c.country.code }}</td><td class="p-3">{{ c.type === 'DESCUENTO' ? `${c.discount}%` : c.type === 'PRECIO' ? `$${c.amount}` : 'Envío gratis' }}</td><td class="p-3 font-mono">{{ c.code || 'Personal' }}</td><td class="p-3 text-xs">{{ c.startAt }}<br>{{ c.endAt }}</td><td class="p-3"><span class="rounded-full px-2 py-1 text-xs" :class="c.status === 'ACTIVO' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-600'">{{ c.status }}</span></td><td class="p-3"><button class="font-semibold text-blue-600" @click="edit(c)">Editar</button></td></tr><tr v-if="loading"><td colspan="8" class="app-muted p-8 text-center">Cargando cupones...</td></tr><tr v-else-if="!coupons.length"><td colspan="8" class="app-muted p-8 text-center">No hay cupones para los filtros seleccionados.</td></tr></tbody></table></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="app-surface-soft app-text"><tr><th class="p-3">ID</th><th class="p-3">Cupón</th><th class="p-3">País</th><th class="p-3">Beneficio</th><th class="p-3">Código</th><th class="p-3">Vigencia</th><th class="p-3">Estado</th><th class="p-3"></th></tr></thead><tbody><tr v-for="c in coupons" :key="c.id" class="border-t" style="border-color: var(--stj-border);"><td class="p-3">{{ c.id }}</td><td class="p-3"><strong>{{ c.name }}</strong><div class="app-muted text-xs">{{ c.commercialName }}</div></td><td class="p-3">{{ c.country.code }}</td><td class="p-3">{{ c.type === 'DESCUENTO' ? `${c.discount}%` : c.type === 'PRECIO' ? `$${c.amount}` : 'Envío gratis' }}</td><td class="p-3 font-mono">{{ c.code || 'Personal' }}</td><td class="p-3 text-xs">{{ c.startAt }}<br>{{ c.endAt }}</td><td class="p-3"><span class="rounded-full px-2 py-1 text-xs" :class="c.status === 'ACTIVO' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-600'">{{ c.status }}</span></td><td class="p-3"><div class="flex items-center gap-3"><button class="font-semibold text-blue-600" @click="edit(c)">Editar</button><button :disabled="changingStatusId === c.id" class="font-semibold disabled:opacity-40" :class="c.status === 'ACTIVO' ? 'text-red-600' : 'text-emerald-700'" @click="changeStatus(c)">{{ changingStatusId === c.id ? 'Procesando...' : (c.status === 'ACTIVO' ? 'Inactivar' : 'Activar') }}</button></div></td></tr><tr v-if="loading"><td colspan="8" class="app-muted p-8 text-center">Cargando cupones...</td></tr><tr v-else-if="!coupons.length"><td colspan="8" class="app-muted p-8 text-center">No hay cupones para los filtros seleccionados.</td></tr></tbody></table></div>
         <div class="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 text-sm" style="border-color: var(--stj-border);">
           <span class="app-muted">Mostrando {{ firstResult }} a {{ lastResult }} de {{ pagination.total }} cupones</span>
           <div class="flex items-center gap-2"><button class="app-surface app-text rounded-md border px-3 py-2 disabled:opacity-40" :disabled="pagination.page <= 1 || loading" @click="goToPage(pagination.page - 1)">Anterior</button><span class="app-muted px-2">Página {{ pagination.page }} de {{ pagination.lastPage }}</span><button class="app-surface app-text rounded-md border px-3 py-2 disabled:opacity-40" :disabled="pagination.page >= pagination.lastPage || loading" @click="goToPage(pagination.page + 1)">Siguiente</button></div>

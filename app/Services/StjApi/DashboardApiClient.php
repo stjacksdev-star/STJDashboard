@@ -26,6 +26,18 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function changeCouponStatus(int $coupon, string $status, string $country): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->patch('/dashboard/coupons/'.$coupon.'/status', ['status' => $status, 'country' => $country]);
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
     public function couponCatalogs(string $country): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->get('/dashboard/coupons/catalogs', ['country' => $country]);
