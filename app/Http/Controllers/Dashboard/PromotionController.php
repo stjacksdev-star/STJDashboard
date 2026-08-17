@@ -59,6 +59,9 @@ class PromotionController extends Controller
             'startAt' => ['required', 'date'],
             'endAt' => ['required', 'date', 'after:startAt'],
             'products' => ['nullable', 'file', 'max:5120'],
+        ], [
+            'storeScope.required_unless' => 'Seleccione el alcance en tiendas para la modalidad TODO o SOLO TIENDA.',
+            'storeScope.prohibited_if' => 'El alcance en tiendas no aplica para la modalidad SOLO DOMICILIO.',
         ]);
 
         $user = (array) $request->session()->get('stj.user', []);

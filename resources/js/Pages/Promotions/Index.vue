@@ -205,6 +205,11 @@ async function createPromotion() {
     createError.value = '';
     createErrors.value = {};
 
+    if (usesStoreScope.value && !['TODAS', 'SELECCIONADAS'].includes(createForm.value.storeScope)) {
+        createErrors.value = { storeScope: ['Seleccione el alcance en tiendas.'] };
+        return;
+    }
+
     if (canSelectPromotionStores.value && createForm.value.stores.length === 0) {
         createErrors.value = { stores: ['Debe seleccionar al menos una tienda.'] };
         openStoreSelector();
@@ -1115,7 +1120,7 @@ onMounted(fetchPromotions);
                                 </label>
 
                                 <label class="block">
-                                    <span class="app-muted text-sm font-medium">Aplica</span>
+                                    <span class="app-muted text-sm font-medium">Modalidad de entrega</span>
                                     <select v-model="createForm.checkoutType" class="stj-input mt-2">
                                         <option value="TODO">TODO</option>
                                         <option value="D">SOLO DOMICILIO</option>
@@ -1131,7 +1136,7 @@ onMounted(fetchPromotions);
                                         :required="usesStoreScope"
                                         class="stj-input mt-2"
                                     >
-                                        <option :value="null">No aplica</option>
+                                        <option v-if="!usesStoreScope" :value="null">No aplica</option>
                                         <option value="TODAS">TODAS LAS TIENDAS</option>
                                         <option value="SELECCIONADAS">TIENDAS SELECCIONADAS</option>
                                     </select>
