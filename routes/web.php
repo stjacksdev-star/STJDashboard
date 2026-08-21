@@ -11,6 +11,7 @@ use App\Http\Controllers\Dashboard\PromotionController;
 use App\Http\Controllers\Dashboard\ProductCategoryController;
 use App\Http\Controllers\Dashboard\ProductCountryController;
 use App\Http\Controllers\Dashboard\ProductMasterController;
+use App\Http\Controllers\Dashboard\ProductPerformanceReportController;
 use App\Http\Controllers\Dashboard\PushNotificationController;
 use App\Http\Controllers\Dashboard\SalesController;
 use App\Http\Controllers\Dashboard\StoreReportController;
@@ -163,6 +164,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.orders.processed-pdf');
     Route::get('/dashboard-api/reports/store/catalog', [StoreReportController::class, 'catalog'])
         ->name('dashboard-api.reports.store.catalog');
+    Route::get('/dashboard-api/reports/product-performance', ProductPerformanceReportController::class)
+        ->name('dashboard-api.reports.product-performance');
     Route::get('/dashboard-api/reports/store/virtual-cut', [StoreReportController::class, 'virtualCut'])
         ->name('dashboard-api.reports.store.virtual-cut');
     Route::get('/dashboard-api/reports/store/virtual-cut/pdf', [StoreReportController::class, 'virtualCutPdf'])
@@ -247,6 +250,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
     })->name('orders.management');
     Route::get('/reportes/corte-virtual', fn () => Inertia::render('Reports/StoreVirtualCut'))
         ->name('reports.store.virtual-cut');
+    Route::get('/reportes/rendimiento-productos', fn () => Inertia::render('Reports/ProductPerformance'))
+        ->name('reports.product-performance');
     Route::get('/reportes/articulos-pendientes', fn () => Inertia::render('Reports/PendingItems'))
         ->name('reports.pending-items');
     Route::get('/reportes/articulos-pendientes-pedido', fn () => Inertia::render('Reports/PendingItemsByOrder'))

@@ -44,6 +44,7 @@ class DashboardMenu
             [
                 'label' => 'Reportes',
                 'items' => [
+                    self::item('Rendimiento de productos', '/reportes/rendimiento-productos', 'chart'),
                     self::item('Catalogo', '/reportes/catalogo', 'grid', 'MENU_CATALOGO_PDF'),
                     self::item('Suscriptores', '/reportes/suscriptores', 'users', 'MENU_NEWSLETTER'),
                     self::group('IM', 'layers', [

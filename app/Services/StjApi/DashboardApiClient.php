@@ -9,6 +9,15 @@ use Illuminate\Support\Facades\Http;
 
 class DashboardApiClient
 {
+    public function productPerformanceReport(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()->get('/dashboard/reports/product-performance', array_filter($filters, fn ($value) => $value !== null && $value !== ''));
+        $response->throw();
+        return $response->json('data') ?? [];
+    }
+
     public function coupons(?string $country = null, ?string $status = null, ?string $search = null, int $page = 1, int $perPage = 20): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
