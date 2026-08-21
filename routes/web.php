@@ -252,6 +252,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
     })->name('orders.management');
     Route::get('/reportes/corte-virtual', fn () => Inertia::render('Reports/StoreVirtualCut'))
         ->name('reports.store.virtual-cut');
+    Route::get('/reportes/catalogo', fn () => Inertia::render('Reports/Catalog'))
+        ->name('reports.catalog');
     Route::get('/reportes/rendimiento-productos', fn () => Inertia::render('Reports/ProductPerformance'))
         ->name('reports.product-performance');
     Route::get('/reportes/articulos-pendientes', fn () => Inertia::render('Reports/PendingItems'))
@@ -272,7 +274,6 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('settings.push-notifications');
 
     foreach ([
-        '/reportes/catalogo' => 'Reportes / Catalogo',
         '/reportes/im/venta' => 'Reportes / IM Venta',
         '/reportes/contabilidad/venta-general-2' => 'Reportes / Contabilidad 2',
         '/configuracion/log' => 'Configuracion / LOG',
