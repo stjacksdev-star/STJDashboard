@@ -166,6 +166,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.reports.store.catalog');
     Route::get('/dashboard-api/reports/product-performance', ProductPerformanceReportController::class)
         ->name('dashboard-api.reports.product-performance');
+    Route::get('/dashboard-api/reports/product-performance/export', [ProductPerformanceReportController::class, 'export'])
+        ->name('dashboard-api.reports.product-performance.export');
     Route::get('/dashboard-api/reports/store/virtual-cut', [StoreReportController::class, 'virtualCut'])
         ->name('dashboard-api.reports.store.virtual-cut');
     Route::get('/dashboard-api/reports/store/virtual-cut/pdf', [StoreReportController::class, 'virtualCutPdf'])

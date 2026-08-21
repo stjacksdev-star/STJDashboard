@@ -18,6 +18,17 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function exportProductPerformanceReport(array $filters): Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(120)->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->get('/dashboard/reports/product-performance/export', array_filter($filters, fn ($value) => $value !== null && $value !== ''));
+        $response->throw();
+        return $response;
+    }
+
+
     public function coupons(?string $country = null, ?string $status = null, ?string $search = null, int $page = 1, int $perPage = 20): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
