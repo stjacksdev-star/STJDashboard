@@ -205,11 +205,13 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
     Route::get('/promociones', fn () => Inertia::render('Promotions/Index'))
         ->name('promotions.index');
     Route::get('/cupones/mantenimiento', fn () => Inertia::render('Coupons/Index'))->name('coupons.index');
+    Route::get('/cupones/reportes', fn () => Inertia::render('Coupons/Reports'))->name('coupons.reports');
     Route::get('/dashboard-api/coupons', [CouponController::class, 'index'])->name('dashboard-api.coupons.index');
     Route::get('/dashboard-api/coupons/catalogs', [CouponController::class, 'catalogs'])->name('dashboard-api.coupons.catalogs');
     Route::post('/dashboard-api/coupons', [CouponController::class, 'store'])->name('dashboard-api.coupons.store');
     Route::put('/dashboard-api/coupons/{coupon}', [CouponController::class, 'update'])->name('dashboard-api.coupons.update');
     Route::patch('/dashboard-api/coupons/{coupon}/status', [CouponController::class, 'status'])->name('dashboard-api.coupons.status');
+    Route::get('/dashboard-api/coupons/usage-report', [CouponController::class, 'usageReport'])->name('dashboard-api.coupons.usage-report');
     Route::get('/productos/categorias', fn () => Inertia::render('Products/Categories'))
         ->name('products.categories');
     Route::get('/productos/catalogo', fn () => Inertia::render('Products/Master'))
@@ -263,7 +265,6 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('settings.push-notifications');
 
     foreach ([
-        '/cupones/reportes' => 'Cupones / Reportes',
         '/reportes/catalogo' => 'Reportes / Catalogo',
         '/reportes/im/venta' => 'Reportes / IM Venta',
         '/reportes/contabilidad/venta-general-2' => 'Reportes / Contabilidad 2',

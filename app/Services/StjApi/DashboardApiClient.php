@@ -44,6 +44,18 @@ class DashboardApiClient
         $response->throw(); return $response->json('data') ?? [];
     }
 
+    public function couponUsageReport(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/coupons/usage-report', array_filter($filters, fn ($value) => $value !== null && $value !== ''));
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
     public function saveCouponMultipart(array $data, ?int $coupon, ?UploadedFile $products, ?UploadedFile $customers): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout(120)->withToken((string) config('stj.api.dashboard_token'))->acceptJson();

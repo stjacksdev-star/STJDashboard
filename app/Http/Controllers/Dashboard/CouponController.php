@@ -52,6 +52,24 @@ class CouponController extends Controller
             return response()->json(['ok' => true, 'data' => $couponData, 'message' => $data['status'] === 'INACTIVO' ? 'Cupón inactivado.' : 'Cupón activado.']);
         } catch (RequestException $e) { return $this->apiError($e); }
     }
+
+    public function usageReport(Request $request, DashboardApiClient $api, UserCountryAccessService $access): JsonResponse
+    {
+        $data = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'startDate' => ['required', 'date'],
+            'endDate' => ['required', 'date', 'after_or_equal:startDate'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'in:10,20,50,100'],
+        ]);
+        $user = (array) $request->session()->get('stj.user', []);
+        if (! $access->canAccessCountry($user, $data['country'])) return $this->forbidden();
+
+        try {
+            return response()->json(['ok' => true, 'data' => $api->couponUsageReport($data)]);
+        } catch (RequestException $e) { return $this->apiError($e); }
+    }
     public function catalogs(Request $request, DashboardApiClient $api, UserCountryAccessService $access): JsonResponse
     {
         $country = $request->string('country')->toString(); $user = (array) $request->session()->get('stj.user', []);
