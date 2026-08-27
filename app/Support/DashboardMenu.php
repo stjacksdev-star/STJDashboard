@@ -17,7 +17,6 @@ class DashboardMenu
                     self::item('Citas', '/citas', 'tag', 'MENU_CITAS'),
                     self::item('Venta', '/venta', 'chart', 'MENU_KPI'),
                     self::item('Promociones', '/promociones', 'tag', 'MENU_PROMOCIONES'),
-                    self::item('Assets', '/assets', 'image', 'MENU_STJ_ASSETS', true),
                 ],
             ],
             [
@@ -83,6 +82,7 @@ class DashboardMenu
             [
                 'label' => 'Configuracion',
                 'items' => [
+                    self::item('Assets', '/assets', 'image', 'MENU_STJ_ASSETS', true),
                     self::item('LOG', '/configuracion/log', 'activity', 'MENU_CONFIGURACION'),
                     self::item('Push', '/configuracion/push', 'activity', 'MENU_PUSH_NOTIFICACIONES'),
                     self::item('Paises por usuario', '/configuracion/usuarios-paises', 'flag', 'MENU_CONFIGURACION'),

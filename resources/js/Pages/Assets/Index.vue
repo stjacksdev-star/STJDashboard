@@ -47,7 +47,7 @@ onMounted(load);
   <AdminLayout>
     <Head title="Assets" />
     <div class="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-      <section class="app-card rounded-xl border p-5">
+      <section class="app-surface app-border rounded-xl border p-5">
         <div class="mb-5 flex items-start justify-between gap-4">
           <div><h1 class="app-text text-2xl font-semibold">Assets del ecommerce</h1><p class="app-muted mt-1 text-sm">Gestión independiente de imágenes publicadas por país y vigencia.</p></div>
           <button v-if="editing" type="button" class="app-button-secondary rounded-lg px-4 py-2" @click="cancel">Cancelar edición</button>
@@ -70,7 +70,7 @@ onMounted(load);
           <div class="lg:col-span-4"><button :disabled="saving" class="app-button-primary rounded-lg px-5 py-2.5 disabled:opacity-60">{{ saving ? 'Guardando...' : (editing ? 'Guardar cambios' : 'Crear asset') }}</button></div>
         </form>
       </section>
-      <section class="app-card overflow-hidden rounded-xl border p-5">
+      <section class="app-surface app-border overflow-hidden rounded-xl border p-5">
         <h2 class="app-text mb-4 text-lg font-semibold">Listado de assets</h2>
         <div v-if="loading" class="app-muted py-10 text-center">Cargando assets...</div>
         <div v-else class="overflow-x-auto" @click="handleAction"><DataTable :key="tableKey" :data="rows" :columns="columns" :options="options" class="display w-full" /></div>
