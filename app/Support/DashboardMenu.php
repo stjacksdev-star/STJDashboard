@@ -86,10 +86,6 @@ class DashboardMenu
                     self::item('LOG', '/configuracion/log', 'activity', 'MENU_CONFIGURACION'),
                     self::item('Push', '/configuracion/push', 'activity', 'MENU_PUSH_NOTIFICACIONES'),
                     self::item('Paises por usuario', '/configuracion/usuarios-paises', 'flag', 'MENU_CONFIGURACION'),
-                    self::group('Componentes', 'settings', [
-                        self::item('Slides', '/configuracion/slides', permission: 'MENU_SLIDES'),
-                        self::item('Imagenes', '/configuracion/imagenes', permission: 'MENU_IMAGENES'),
-                    ], 'MENU_CONFIGURACION'),
                 ],
             ],
         ];
