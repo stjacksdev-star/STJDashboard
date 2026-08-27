@@ -14,6 +14,7 @@ use App\Http\Controllers\Dashboard\ProductMasterController;
 use App\Http\Controllers\Dashboard\ProductPerformanceReportController;
 use App\Http\Controllers\Dashboard\PushNotificationController;
 use App\Http\Controllers\Dashboard\SalesController;
+use App\Http\Controllers\Dashboard\StandaloneAssetController;
 use App\Http\Controllers\Dashboard\StoreReportController;
 use App\Http\Controllers\Dashboard\SubscriberController;
 use App\Http\Controllers\Dashboard\UserCountryAccessController;
@@ -64,6 +65,9 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.promotions.assets.destroy');
     Route::post('/dashboard-api/promotions/{promotion}/header', [PromotionController::class, 'updateHeader'])
         ->name('dashboard-api.promotions.header.update');
+    Route::get('/dashboard-api/assets', [StandaloneAssetController::class, 'index'])->name('dashboard-api.assets.index');
+    Route::post('/dashboard-api/assets', [StandaloneAssetController::class, 'store'])->name('dashboard-api.assets.store');
+    Route::post('/dashboard-api/assets/{asset}', [StandaloneAssetController::class, 'update'])->name('dashboard-api.assets.update');
     Route::get('/dashboard-api/product-categories', [ProductCategoryController::class, 'index'])
         ->name('dashboard-api.product-categories.index');
     Route::post('/dashboard-api/product-categories', [ProductCategoryController::class, 'store'])
@@ -209,6 +213,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('collections.index');
     Route::get('/promociones', fn () => Inertia::render('Promotions/Index'))
         ->name('promotions.index');
+    Route::get('/assets', function (Request $request) {
+        abort_unless(in_array('ROOT', DashboardAccess::permissions($request->session()->get('stj.user')), true), 403, 'Solo un usuario ROOT puede acceder a esta gestion.');
+        return Inertia::render('Assets/Index');
+    })->name('assets.index');
     Route::get('/cupones/mantenimiento', fn () => Inertia::render('Coupons/Index'))->name('coupons.index');
     Route::get('/cupones/reportes', fn () => Inertia::render('Coupons/Reports'))->name('coupons.reports');
     Route::get('/dashboard-api/coupons', [CouponController::class, 'index'])->name('dashboard-api.coupons.index');

@@ -1959,4 +1959,23 @@ class DashboardApiClient
             ->mapWithKeys(fn ($value, string $key) => ["actor[{$key}]" => (string) $value])
             ->all();
     }
+
+    public function standaloneAssets(): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->get('/dashboard/standalone-assets');
+        $response->throw();
+        return $response->json('data') ?? [];
+    }
+
+    public function saveStandaloneAsset(array $data, ?int $asset, ?UploadedFile $image, ?UploadedFile $mobileImage): array
+    {
+        $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout(120)
+            ->withToken((string) config('stj.api.dashboard_token'))->acceptJson();
+        if ($image) $request = $request->attach('image', fopen($image->getRealPath(), 'rb'), $image->getClientOriginalName());
+        if ($mobileImage) $request = $request->attach('mobileImage', fopen($mobileImage->getRealPath(), 'rb'), $mobileImage->getClientOriginalName());
+        $response = $request->post('/dashboard/standalone-assets'.($asset ? '/'.$asset : ''), collect($data)->map(fn ($value) => $value === null ? '' : (string) $value)->all());
+        $response->throw();
+        return $response->json('data') ?? [];
+    }
 }

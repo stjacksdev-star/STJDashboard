@@ -17,6 +17,7 @@ class DashboardMenu
                     self::item('Citas', '/citas', 'tag', 'MENU_CITAS'),
                     self::item('Venta', '/venta', 'chart', 'MENU_KPI'),
                     self::item('Promociones', '/promociones', 'tag', 'MENU_PROMOCIONES'),
+                    self::item('Assets', '/assets', 'image', 'MENU_STJ_ASSETS', true),
                 ],
             ],
             [
@@ -124,6 +125,9 @@ class DashboardMenu
 
     private static function filterItem(array $item, ?array $user): ?array
     {
+        if (($item['rootOnly'] ?? false) && ! in_array('ROOT', DashboardAccess::permissions($user), true)) {
+            return null;
+        }
         if (isset($item['permission']) && ! DashboardAccess::can($user, $item['permission'])) {
             return null;
         }
@@ -143,11 +147,12 @@ class DashboardMenu
         }
 
         unset($item['permission']);
+        unset($item['rootOnly']);
 
         return $item;
     }
 
-    private static function item(string $label, string $href, string $icon = 'dot', ?string $permission = null): array
+    private static function item(string $label, string $href, string $icon = 'dot', ?string $permission = null, bool $rootOnly = false): array
     {
         return array_filter([
             'type' => 'item',
@@ -155,6 +160,7 @@ class DashboardMenu
             'href' => $href,
             'icon' => $icon,
             'permission' => $permission,
+            'rootOnly' => $rootOnly ?: null,
         ]);
     }
 
