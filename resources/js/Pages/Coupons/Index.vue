@@ -44,6 +44,9 @@ async function changeStatus(coupon) {
 }
 onMounted(load);
 watch(() => form.country, loadCatalogs);
+watch(() => form.extraDiscount, value => {
+  if (value === 'SI' && form.promotionRule === 'REGULAR') form.promotionRule = 'TODOS';
+});
 watch(() => filters.search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { filters.page = 1; load(); }, 350); });
 function applyFilters() { filters.page = 1; load(); }
 function goToPage(page) { if (page < 1 || page > pagination.lastPage || page === pagination.page) return; filters.page = page; load(); }
@@ -73,7 +76,7 @@ const lastResult = computed(() => Math.min(pagination.page * pagination.perPage,
           <label v-if="form.type === 'PRECIO'" class="text-sm">Precio objetivo<input v-model.number="form.amount" required type="number" min="0.01" step="0.01" class="app-input mt-1 w-full rounded-lg border px-3 py-2"></label>
           <label class="text-sm">Genérico<select v-model="form.generic" class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option>NO</option><option>SI</option></select></label>
           <label v-if="form.generic === 'SI'" class="text-sm">Código<input v-model.trim="form.code" required maxlength="100" class="app-input mt-1 w-full rounded-lg border px-3 py-2 uppercase"></label>
-          <label class="text-sm">Aplica sobre<select v-model="form.promotionRule" class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option value="REGULAR">Precio regular</option><option value="PROMO">Productos en promoción</option><option value="TODOS">Todos</option></select></label>
+          <label class="text-sm">Aplica sobre<select v-model="form.promotionRule" class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option value="REGULAR" :disabled="form.extraDiscount === 'SI'">Precio regular</option><option value="PROMO">Productos en promoción</option><option value="TODOS">Todos</option></select></label>
           <label class="text-sm">Monto mínimo<select v-model="form.minimumEnabled" class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option>NO</option><option>SI</option></select></label>
           <label v-if="form.minimumEnabled === 'SI'" class="text-sm">Monto mínimo<input v-model.number="form.minimumAmount" type="number" min="0" step="0.01" class="app-input mt-1 w-full rounded-lg border px-3 py-2"></label>
           <label class="text-sm">Primera compra<select v-model="form.firstPurchaseOnly" class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option>NO</option><option>SI</option></select></label>
