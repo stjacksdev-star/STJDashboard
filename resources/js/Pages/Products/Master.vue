@@ -550,7 +550,7 @@ function escapeHtml(value) {
                     <div v-if="activeImportTab === 'products'">
                         <h2 class="app-text text-lg font-semibold">Importar Excel</h2>
                         <p class="app-muted mt-2 text-sm">
-                            Se procesa solo la hoja 1 del archivo con columnas A-R del flujo anterior.
+                            Se procesa solo la hoja 1 del archivo con columnas A-S. La columna S corresponde al patrón Denim y puede quedar vacía.
                         </p>
 
                         <form class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="importProducts">
