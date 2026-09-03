@@ -17,7 +17,7 @@ const success = ref('');
 const categories = ref([]);
 const options = ref({
     alignments: ['left', 'center', 'right'],
-    brands: ['ST JACKS', 'BUNGEE', 'BASICS', 'JACK & CO'],
+    brands: ['ST JACKS', 'BUNGEE', 'BASICS', 'BASIKOS', 'JACK & CO'],
 });
 const tableKey = ref(0);
 const showModal = ref(false);
