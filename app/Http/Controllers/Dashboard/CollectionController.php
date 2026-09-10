@@ -111,14 +111,14 @@ class CollectionController extends Controller
         $validated = $request->validate([
             'type' => ['required', Rule::in(['CUPON', 'LO-MAS-NUEVO', 'BANNER', 'MODAL', 'SLIDER'])],
             'platform' => ['nullable', Rule::in(['TODO', 'WEB', 'APP'])],
-            'position' => ['nullable', Rule::in(['DERECHA', 'IZQUIERDA', 'CENTRO'])],
+            'position' => ['nullable', Rule::in(['DERECHA', 'IZQUIERDA', 'CENTRO', 'MOVIL-EXTRA'])],
             'order' => ['nullable', 'integer', 'min:0'],
             'status' => ['nullable', Rule::in(['ACTIVO', 'PENDIENTE', 'CANCELADO', 'FINALIZADO'])],
             'startAt' => ['required', 'date'],
             'endAt' => ['required', 'date', 'after_or_equal:startAt'],
             'title' => ['nullable', 'string', 'max:45'],
-            'image' => ['required', 'image', 'max:5120'],
-            'mobileImage' => ['nullable', 'image', 'max:5120'],
+            'image' => [Rule::requiredIf($request->input('position') !== 'MOVIL-EXTRA'), 'nullable', 'image', 'max:5120'],
+            'mobileImage' => [Rule::requiredIf($request->input('position') === 'MOVIL-EXTRA'), 'nullable', 'image', 'max:5120'],
         ]);
 
         try {

@@ -1716,13 +1716,16 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
-    public function createCollectionAsset(int $collection, array $data, UploadedFile $image, ?UploadedFile $mobileImage = null): array
+    public function createCollectionAsset(int $collection, array $data, ?UploadedFile $image = null, ?UploadedFile $mobileImage = null): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
             ->withToken((string) config('stj.api.dashboard_token'))
-            ->acceptJson()
-            ->attach('image', fopen($image->getRealPath(), 'rb'), $image->getClientOriginalName());
+            ->acceptJson();
+
+        if ($image) {
+            $request = $request->attach('image', fopen($image->getRealPath(), 'rb'), $image->getClientOriginalName());
+        }
 
         if ($mobileImage) {
             $request = $request->attach('mobileImage', fopen($mobileImage->getRealPath(), 'rb'), $mobileImage->getClientOriginalName());

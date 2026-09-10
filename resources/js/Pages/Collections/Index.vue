@@ -1101,6 +1101,7 @@ onMounted(() => {
                                             <option value="IZQUIERDA">IZQUIERDA</option>
                                             <option value="DERECHA">DERECHA</option>
                                             <option value="CENTRO">CENTRO</option>
+                                            <option value="MOVIL-EXTRA">MOVIL-EXTRA</option>
                                         </select>
                                     </label>
                                 </div>
@@ -1144,7 +1145,7 @@ onMounted(() => {
                                     <span class="app-muted text-sm font-medium">Imagen desktop</span>
                                     <input
                                         ref="assetImageInput"
-                                        required
+                                        :required="assetForm.type !== 'LO-MAS-NUEVO' || assetForm.position !== 'MOVIL-EXTRA'"
                                         accept="image/*"
                                         type="file"
                                         class="app-surface app-text mt-2 block h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700"
@@ -1158,6 +1159,7 @@ onMounted(() => {
                                     <input
                                         ref="assetMobileImageInput"
                                         accept="image/*"
+                                        :required="assetForm.type === 'LO-MAS-NUEVO' && assetForm.position === 'MOVIL-EXTRA'"
                                         type="file"
                                         class="app-surface app-text mt-2 block h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700"
                                         style="border-color: var(--stj-border);"
