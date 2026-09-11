@@ -28,6 +28,27 @@ class OrderController extends Controller
         'ANULADO-EFECTIVO',
     ];
 
+    public function abandoned(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'PEDIDOS_ABANDONADOS')) {
+            return response()->json(['ok' => false, 'message' => 'No tiene permiso para ver pedidos abandonados o fallidos.'], 403);
+        }
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'], 'startDate' => ['required', 'date'],
+            'endDate' => ['required', 'date', 'after_or_equal:startDate'],
+            'status' => ['nullable', 'in:SIN_PAGO,PENDIENTE,DENEGADA,TIMEOUT,REVERSION,DEVOLUCION'],
+            'search' => ['nullable', 'string', 'max:120'], 'page' => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'in:10,20,50,100'],
+        ]);
+        $user = (array) $request->session()->get('stj.user', []);
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) return $this->countryForbidden();
+        try {
+            return response()->json(['ok' => true, 'data' => $api->abandonedOrders($validated)]);
+        } catch (RequestException $exception) {
+            return response()->json(['ok' => false, 'message' => $exception->response?->json('message') ?: 'No fue posible consultar los pedidos abandonados.', 'errors' => $exception->response?->json('errors') ?: []], $exception->response?->status() ?: 502);
+        }
+    }
+
     public function refunds(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_DEVOLUCIONES')) {

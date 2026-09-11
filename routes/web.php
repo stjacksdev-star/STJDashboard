@@ -160,6 +160,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.orders.search');
     Route::get('/dashboard-api/orders/payment-attempts', [OrderController::class, 'paymentAttempts'])
         ->name('dashboard-api.orders.payment-attempts');
+    Route::get('/dashboard-api/orders/abandoned', [OrderController::class, 'abandoned'])
+        ->name('dashboard-api.orders.abandoned');
     Route::get('/dashboard-api/orders/refunds', [OrderController::class, 'refunds'])
         ->name('dashboard-api.orders.refunds');
     Route::get('/dashboard-api/orders/refunds/{order}/pdf', [OrderController::class, 'refundPdf'])
@@ -239,6 +241,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('orders.pending');
     Route::get('/pedidos/procesados', fn () => Inertia::render('Orders/Processed'))
         ->name('orders.processed');
+    Route::get('/pedidos/abandonados', function (Request $request) {
+        abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'PEDIDOS_ABANDONADOS'), 403);
+        return Inertia::render('Orders/Abandoned');
+    })->name('orders.abandoned');
     Route::get('/pedidos/devoluciones', fn () => Inertia::render('Orders/Refunds'))
         ->name('orders.refunds');
     Route::get('/pedidos/reclamos', fn () => Inertia::render('Orders/Claims'))

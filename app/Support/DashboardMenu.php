@@ -33,6 +33,7 @@ class DashboardMenu
                     self::item('Gestiones', '/pedidos/gestiones', 'truck', 'MENU_GESTION_PEDIDO'),
                     self::item('Pendientes', '/pedidos/pendientes', 'list', 'MENU_PEDIDOS'),
                     self::item('Procesados', '/pedidos/procesados', 'clipboard', 'MENU_PEDIDOS'),
+                    self::item('Abandonados / fallidos', '/pedidos/abandonados', 'report', 'PEDIDOS_ABANDONADOS'),
                     self::item('Devoluciones', '/pedidos/devoluciones', 'refresh', 'MENU_DEVOLUCIONES'),
                     self::item('Reclamos', '/pedidos/reclamos', 'report', 'MENU_RECLAMOS'),
                     self::group('Busqueda', 'search', [

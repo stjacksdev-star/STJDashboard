@@ -53,6 +53,17 @@ class ExampleTest extends TestCase
         $this->assertContains('Promociones', $labels);
         $this->assertContains('Productos', collect($menu)->pluck('label')->all());
         $this->assertContains('Configuracion', collect($menu)->pluck('label')->all());
+        $this->assertContains('Abandonados / fallidos', $labels);
+    }
+
+    public function test_abandoned_orders_menu_requires_its_permission(): void
+    {
+        $withoutPermission = DashboardMenu::forUser(['operaciones' => [['ope_codigo' => 'MENU_PEDIDOS']]]);
+        $withPermission = DashboardMenu::forUser(['operaciones' => [['ope_codigo' => 'PEDIDOS_ABANDONADOS']]]);
+        $labels = fn (array $menu) => collect($menu)->flatMap(fn (array $section) => collect($section['items'])->pluck('label'))->all();
+
+        $this->assertNotContains('Abandonados / fallidos', $labels($withoutPermission));
+        $this->assertContains('Abandonados / fallidos', $labels($withPermission));
     }
 
     public function test_dashboard_menu_shows_push_with_push_permission(): void

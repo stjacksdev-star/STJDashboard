@@ -447,6 +447,17 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function abandonedOrders(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/orders/abandoned', array_filter($filters, fn ($value) => filled($value)));
+        $response->throw();
+        return $response->json('data') ?? [];
+    }
+
     /**
      * @param array<string, mixed> $filters
      * @return array<string, mixed>
