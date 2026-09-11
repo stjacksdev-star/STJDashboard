@@ -12,8 +12,15 @@ const filters = ref({ country: String(user.value?.idPais || ''), startDate: days
 
 function today() { return new Date().toISOString().slice(0, 10); }
 function daysAgo(days) { const date = new Date(); date.setDate(date.getDate() - days); return date.toISOString().slice(0, 10); }
-function formatDate(value) { return value ? new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(String(value).replace(' ', 'T'))) : 'N/D'; }
-function formatMoney(value) { return value === null ? 'N/D' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value); }
+function formatDate(value) {
+  if (!value || String(value).startsWith('0000-00-00')) return 'N/D';
+  const date = new Date(String(value).replace(' ', 'T'));
+  return Number.isNaN(date.getTime()) ? 'N/D' : new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(date);
+}
+function formatMoney(value) {
+  const amount = Number(value);
+  return value === null || value === '' || !Number.isFinite(amount) ? 'N/D' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+}
 function detailHref(row) { return row.reference ? `/pedidos/consulta?country=${encodeURIComponent(filters.value.country)}&id=${encodeURIComponent(row.reference)}` : ''; }
 
 async function loadCatalog() {
