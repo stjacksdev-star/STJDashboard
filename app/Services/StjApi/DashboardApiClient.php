@@ -353,6 +353,18 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function exportAppInstallations(array $filters): Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(120)
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->get('/dashboard/sales/app/export', $filters);
+        $response->throw();
+
+        return $response;
+    }
+
     /**
      * @param array<string, mixed> $filters
      * @return array<string, mixed>

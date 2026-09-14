@@ -562,6 +562,21 @@ const downloadBlob = (blob, filename) => {
     URL.revokeObjectURL(link.href);
 };
 
+const exportAppInstallations = () => {
+    ensureValidAppCountry();
+
+    if (!appFilters.value.country || !appFilters.value.startDate || !appFilters.value.endDate) {
+        return;
+    }
+
+    const query = new URLSearchParams({
+        country: String(appFilters.value.country),
+        startDate: appFilters.value.startDate,
+        endDate: appFilters.value.endDate,
+    });
+    window.location.assign(`/dashboard-api/sales/app/export?${query.toString()}`);
+};
+
 const chartSvgMarkup = (svgElement) => {
     if (!svgElement) {
         return '';
@@ -2679,6 +2694,14 @@ onMounted(() => {
                                 </label>
                                 <button type="submit" class="h-10 rounded-md app-primary px-4 text-sm font-semibold transition hover:opacity-90">
                                     {{ appLoading ? 'Consultando...' : 'Consultar rango' }}
+                                </button>
+                                <button
+                                    type="button"
+                                    class="h-10 rounded-md border px-4 text-sm font-semibold transition hover:opacity-80"
+                                    style="border-color: var(--stj-primary); color: var(--stj-primary);"
+                                    @click="exportAppInstallations"
+                                >
+                                    Descargar Excel
                                 </button>
                             </form>
                         </div>

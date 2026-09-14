@@ -9,6 +9,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class SalesController extends Controller
 {
@@ -278,6 +279,32 @@ class SalesController extends Controller
                 'ok' => false,
                 'message' => $exception->response?->json('message') ?: 'No fue posible obtener las instalaciones APP desde stj-api.',
                 'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function appExport(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): Response|JsonResponse
+    {
+        $validated = $request->validate([
+            'country' => ['required', 'integer', 'min:1'],
+            'startDate' => ['required', 'date'],
+            'endDate' => ['required', 'date', 'after_or_equal:startDate'],
+        ]);
+        if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            $response = $api->exportAppInstallations($validated);
+            return response($response->body(), 200, [
+                'Content-Type' => $response->header('Content-Type') ?: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => $response->header('Content-Disposition') ?: 'attachment; filename="instalaciones-app.xlsx"',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible generar el Excel de instalaciones APP.',
             ], $exception->response?->status() ?: 502);
         }
     }

@@ -116,6 +116,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.sales.geographic');
     Route::get('/dashboard-api/sales/app', [SalesController::class, 'app'])
         ->name('dashboard-api.sales.app');
+    Route::get('/dashboard-api/sales/app/export', [SalesController::class, 'appExport'])
+        ->name('dashboard-api.sales.app.export');
     Route::get('/dashboard-api/sales/orders', [SalesController::class, 'orders'])
         ->name('dashboard-api.sales.orders');
     Route::get('/dashboard-api/appointments/catalog', [AppointmentController::class, 'catalog'])
