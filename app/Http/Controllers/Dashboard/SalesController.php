@@ -255,6 +255,8 @@ class SalesController extends Controller
         $validated = $request->validate([
             'year' => ['nullable', 'integer', 'min:2020', 'max:2100'],
             'country' => ['required', 'integer', 'min:1'],
+            'startDate' => ['required', 'date'],
+            'endDate' => ['required', 'date', 'after_or_equal:startDate'],
         ]);
 
         if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
@@ -264,7 +266,12 @@ class SalesController extends Controller
         try {
             return response()->json([
                 'ok' => true,
-                'data' => $api->appInstallations($validated['year'] ?? null, $validated['country']),
+                'data' => $api->appInstallations(
+                    $validated['year'] ?? null,
+                    $validated['country'],
+                    $validated['startDate'],
+                    $validated['endDate'],
+                ),
             ]);
         } catch (RequestException $exception) {
             return response()->json([

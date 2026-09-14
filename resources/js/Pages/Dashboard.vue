@@ -158,10 +158,19 @@ const appData = ref({
         total: 0,
     },
     rows: [],
+    range: {
+        filters: {},
+        summary: { android: 0, ios: 0, total: 0 },
+        rows: [],
+    },
 });
+const appRangeStart = new Date(today);
+appRangeStart.setDate(appRangeStart.getDate() - 55);
 const appFilters = ref({
     year: today.getFullYear(),
     country: '',
+    startDate: formatDate(appRangeStart),
+    endDate: formatDate(today),
 });
 
 const processedStatuses = [
@@ -366,6 +375,10 @@ const appRows = computed(() => appData.value.rows || []);
 const appPlatforms = computed(() => appData.value.platforms || []);
 const appMaxValue = computed(() =>
     Math.max(1, ...appRows.value.flatMap((row) => appPlatforms.value.map((platform) => Number(row[platform.key] || 0)))),
+);
+const appWeeklyRows = computed(() => appData.value.range?.rows || []);
+const appWeeklyMaxValue = computed(() =>
+    Math.max(1, ...appWeeklyRows.value.flatMap((row) => appPlatforms.value.map((platform) => Number(row[platform.key] || 0)))),
 );
 
 const chartWidth = 920;
@@ -1014,6 +1027,8 @@ const loadApp = async () => {
             params: {
                 year: appFilters.value.year,
                 country: appFilters.value.country,
+                startDate: appFilters.value.startDate,
+                endDate: appFilters.value.endDate,
             },
         });
         appData.value = {
@@ -1043,6 +1058,7 @@ const number2 = (value) => Number(value || 0).toLocaleString('en-US', {
 });
 const geographicBarWidth = (value) => `${Math.max(2, (Number(value || 0) / geographicMaxValue.value) * 100)}%`;
 const appBarHeight = (value) => `${Math.max(4, (Number(value || 0) / appMaxValue.value) * 100)}%`;
+const appWeeklyBarHeight = (value) => `${Math.max(4, (Number(value || 0) / appWeeklyMaxValue.value) * 100)}%`;
 const categoryBarWidth = (sale) => `${Math.max(2, (Number(sale || 0) / categoryMaxSale.value) * 100)}%`;
 const exportCategoryCsv = () => {
     const rows = categoryRows.value;
@@ -2151,6 +2167,8 @@ onMounted(() => {
                             </div>
                         </section>
                     </div>
+
+
                 </div>
 
                 <div v-else-if="activeTab === 'geographic'" class="p-5">
@@ -2644,6 +2662,78 @@ onMounted(() => {
                             </div>
                         </section>
                     </div>
+                    <section class="mt-6 overflow-hidden rounded-lg border p-5" style="border-color: var(--stj-border);">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                            <div>
+                                <h3 class="app-text text-base font-semibold">Instalaciones por rango personalizado</h3>
+                                <p class="app-muted mt-1 text-sm">Nuevas instalaciones agrupadas en semanas de lunes a domingo.</p>
+                            </div>
+                            <form class="flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="loadApp">
+                                <label class="block">
+                                    <span class="app-muted text-sm">Desde</span>
+                                    <input v-model="appFilters.startDate" type="date" class="stj-dashboard-input mt-1" required>
+                                </label>
+                                <label class="block">
+                                    <span class="app-muted text-sm">Hasta</span>
+                                    <input v-model="appFilters.endDate" type="date" :min="appFilters.startDate" class="stj-dashboard-input mt-1" required>
+                                </label>
+                                <button type="submit" class="h-10 rounded-md app-primary px-4 text-sm font-semibold transition hover:opacity-90">
+                                    {{ appLoading ? 'Consultando...' : 'Consultar rango' }}
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                            <div v-for="platform in appPlatforms" :key="`weekly-summary-${platform.key}`" class="rounded-md border p-3" style="border-color: var(--stj-border);">
+                                <div class="flex items-center gap-2">
+                                    <span class="h-3 w-3 rounded-full" :style="{ background: platform.color }"></span>
+                                    <p class="app-muted text-xs">{{ platform.label }}</p>
+                                </div>
+                                <p class="app-text mt-2 text-xl font-bold">{{ appData.range?.summary?.[platform.key] || 0 }}</p>
+                            </div>
+                            <div class="rounded-md border p-3" style="border-color: var(--stj-border);">
+                                <p class="app-muted text-xs">Total del rango</p>
+                                <p class="app-text mt-2 text-xl font-bold">{{ appData.range?.summary?.total || 0 }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 overflow-x-auto pb-2">
+                            <div class="flex min-w-[760px] items-end gap-3 border-b px-2 pt-4" style="border-color: var(--stj-border-soft); min-height: 260px;">
+                                <div v-for="row in appWeeklyRows" :key="row.weekStart" class="flex flex-1 flex-col items-center justify-end gap-3">
+                                    <div class="flex h-48 w-full items-end justify-center gap-1">
+                                        <div
+                                            v-for="platform in appPlatforms"
+                                            :key="`${row.weekStart}-${platform.key}`"
+                                            class="group relative w-5 rounded-t-md transition hover:opacity-80"
+                                            :style="{ height: appWeeklyBarHeight(row[platform.key]), background: platform.color }"
+                                        >
+                                            <span class="app-surface app-border app-text pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded border px-2 py-1 text-xs shadow-sm group-hover:block">
+                                                {{ platform.label }}: {{ row[platform.key] || 0 }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span class="app-text-soft whitespace-nowrap text-xs font-medium">{{ row.weekLabel }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 overflow-x-auto">
+                            <table class="min-w-full text-left text-sm">
+                                <thead class="app-surface-soft app-text-soft">
+                                    <tr>
+                                        <th class="px-3 py-2 font-semibold">Semana</th>
+                                        <th v-for="platform in appPlatforms" :key="`weekly-head-${platform.key}`" class="px-3 py-2 text-right font-semibold">{{ platform.label }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="row in appWeeklyRows" :key="`weekly-table-${row.weekStart}`" class="app-border-soft border-b">
+                                        <td class="px-3 py-2">{{ row.weekLabel }}</td>
+                                        <td v-for="platform in appPlatforms" :key="`weekly-table-${row.weekStart}-${platform.key}`" class="px-3 py-2 text-right">{{ row[platform.key] || 0 }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
                 </div>
             </div>
         </section>
