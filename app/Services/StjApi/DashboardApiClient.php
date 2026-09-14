@@ -335,7 +335,7 @@ class DashboardApiClient
      *
      * @throws RequestException
      */
-    public function appInstallations(?int $year = null): array
+    public function appInstallations(?int $year = null, ?int $countryId = null): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout((int) config('stj.api.timeout'))
@@ -343,6 +343,7 @@ class DashboardApiClient
             ->acceptJson()
             ->get('/dashboard/sales/app', array_filter([
                 'year' => $year,
+                'country' => $countryId,
             ], fn ($value) => filled($value)));
 
         $response->throw();

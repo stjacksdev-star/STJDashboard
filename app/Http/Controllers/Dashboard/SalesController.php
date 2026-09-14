@@ -250,16 +250,21 @@ class SalesController extends Controller
         }
     }
 
-    public function app(Request $request, DashboardApiClient $api): JsonResponse
+    public function app(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([
             'year' => ['nullable', 'integer', 'min:2020', 'max:2100'],
+            'country' => ['required', 'integer', 'min:1'],
         ]);
+
+        if (! $countryAccess->canAccessCountry((array) $request->session()->get('stj.user', []), $validated['country'])) {
+            return $this->countryForbidden();
+        }
 
         try {
             return response()->json([
                 'ok' => true,
-                'data' => $api->appInstallations($validated['year'] ?? null),
+                'data' => $api->appInstallations($validated['year'] ?? null, $validated['country']),
             ]);
         } catch (RequestException $exception) {
             return response()->json([

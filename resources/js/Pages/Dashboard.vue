@@ -161,6 +161,7 @@ const appData = ref({
 });
 const appFilters = ref({
     year: today.getFullYear(),
+    country: '',
 });
 
 const processedStatuses = [
@@ -224,6 +225,14 @@ const countries = computed(() => baseCountries.filter((country) => {
 
     return allowedCountryIds.value.includes(Number(country.id));
 }));
+const appCountries = computed(() => countries.value.filter((country) => !['0', '4'].includes(country.id)));
+const ensureValidAppCountry = () => {
+    if (appCountries.value.some((country) => country.id === String(appFilters.value.country))) {
+        return;
+    }
+
+    appFilters.value.country = appCountries.value[0]?.id || '';
+};
 const ensureValidSalesCountry = () => {
     if (countries.value.some((country) => country.id === filters.value.country)) {
         return;
@@ -992,6 +1001,11 @@ const loadGeographic = async () => {
 };
 
 const loadApp = async () => {
+    ensureValidAppCountry();
+    if (!appFilters.value.country) {
+        appError.value = 'No tiene países disponibles para consultar.';
+        return;
+    }
     appLoading.value = true;
     appError.value = '';
 
@@ -999,6 +1013,7 @@ const loadApp = async () => {
         const response = await window.axios.get('/dashboard-api/sales/app', {
             params: {
                 year: appFilters.value.year,
+                country: appFilters.value.country,
             },
         });
         appData.value = {
@@ -1129,6 +1144,7 @@ watch(activeVisitsTab, () => {
 });
 
 watch(countries, ensureValidSalesCountry);
+watch(appCountries, ensureValidAppCountry);
 watch(() => filters.value.country, () => {
     hideSalesTooltip();
     hiddenSalesSeries.value = new Set();
@@ -2502,6 +2518,14 @@ onMounted(() => {
 
                         <form class="flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="loadApp">
                             <label class="block">
+                                <span class="app-muted text-sm">País</span>
+                                <select v-model="appFilters.country" class="stj-dashboard-input mt-1 min-w-[180px]">
+                                    <option v-for="country in appCountries" :key="country.id" :value="country.id">
+                                        {{ country.label }}
+                                    </option>
+                                </select>
+                            </label>
+                            <label class="block">
                                 <span class="app-muted text-sm">Año</span>
                                 <select v-model.number="appFilters.year" class="stj-dashboard-input mt-1 min-w-[130px]">
                                     <option v-for="year in appData.years" :key="year" :value="year">{{ year }}</option>
@@ -2526,7 +2550,9 @@ onMounted(() => {
                             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h3 class="app-text text-sm font-semibold">Instalaciones por mes</h3>
-                                    <p class="app-muted mt-1 text-xs">{{ appData.filters.year || appFilters.year }}</p>
+                                    <p class="app-muted mt-1 text-xs">
+                                        {{ appData.filters.countryName || '' }} · {{ appData.filters.year || appFilters.year }}
+                                    </p>
                                 </div>
                                 <div class="flex flex-wrap gap-3">
                                     <div v-for="platform in appPlatforms" :key="platform.key" class="flex items-center gap-2 text-sm">
