@@ -1067,7 +1067,7 @@ onMounted(() => {
                                 <dd class="app-text">{{ display(order.storePickup.phone) }}</dd>
                             </div>
                             <div v-if="order.storePickup.samePerson === 'NO'">
-                                <dt class="app-muted font-semibold">Documento de quien retira</dt>
+                                <dt class="app-muted font-semibold">{{ order.storePickup.documentType || 'Documento' }} de quien retira</dt>
                                 <dd class="app-text">{{ display(order.storePickup.identification) }}</dd>
                             </div>
                         </dl>
