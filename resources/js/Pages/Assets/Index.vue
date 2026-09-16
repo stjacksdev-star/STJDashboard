@@ -6,9 +6,9 @@ import { computed, onMounted, ref } from 'vue';
 import AdminLayout from '../../Layouts/AdminLayout.vue';
 
 DataTable.use(DataTablesCore);
-const assets = ref([]), countries = ref([]), loading = ref(true), saving = ref(false), error = ref(''), success = ref(''), editing = ref(null), tableKey = ref(0);
+const assets = ref([]), countries = ref([]), actionTypes = ref([]), loading = ref(true), saving = ref(false), error = ref(''), success = ref(''), editing = ref(null), tableKey = ref(0);
 const imageInput = ref(null), mobileInput = ref(null);
-const blank = () => ({ countryId: '', type: 'BANNER', platform: 'WEB', position: '', order: 1, status: 'PENDIENTE', startAt: '', endAt: '', link: '', title: '', image: null, mobileImage: null });
+const blank = () => ({ countryId: '', type: 'BANNER', platform: 'WEB', position: '', order: 1, status: 'PENDIENTE', startAt: '', endAt: '', link: '', title: '', actionType: 0, image: null, mobileImage: null });
 const form = ref(blank());
 const columns = [
   { data: 'id', title: 'ID' }, { data: 'countryLabel', title: 'País' }, { data: 'type', title: 'Tipo' },
@@ -21,11 +21,11 @@ const rows = computed(() => assets.value.map(a => ({ ...a, countryLabel: `${a.co
 
 async function load() {
   loading.value = true; error.value = '';
-  try { const r = await window.axios.get('/dashboard-api/assets'); assets.value = r.data.data?.assets || []; countries.value = r.data.data?.countries || []; tableKey.value++; }
+  try { const r = await window.axios.get('/dashboard-api/assets'); assets.value = r.data.data?.assets || []; countries.value = r.data.data?.countries || []; actionTypes.value = r.data.data?.actionTypes || []; tableKey.value++; }
   catch (e) { error.value = e.response?.data?.message || 'No fue posible cargar los assets.'; }
   finally { loading.value = false; }
 }
-function edit(asset) { editing.value = asset; form.value = { countryId: asset.country?.id || '', type: asset.type, platform: asset.platform || 'WEB', position: asset.position || '', order: asset.order ?? 1, status: asset.status || 'PENDIENTE', startAt: localDate(asset.startAt), endAt: localDate(asset.endAt), link: asset.link || '', title: asset.title || '', image: null, mobileImage: null }; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function edit(asset) { editing.value = asset; form.value = { countryId: asset.country?.id || '', type: asset.type, platform: asset.platform || 'WEB', position: asset.position || '', order: asset.order ?? 1, status: asset.status || 'PENDIENTE', startAt: localDate(asset.startAt), endAt: localDate(asset.endAt), link: asset.link || '', title: asset.title || '', actionType: asset.actionType ?? 0, image: null, mobileImage: null }; window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function cancel() { editing.value = null; form.value = blank(); clearFiles(); error.value = ''; }
 async function submit() {
   saving.value = true; error.value = ''; success.value = '';
@@ -59,6 +59,7 @@ onMounted(load);
           <label class="text-sm">Tipo de asset *<select v-model="form.type" required class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option v-for="t in ['BANNER','SLIDER','MODAL','CUPON','LO-MAS-NUEVO']" :key="t">{{ t }}</option></select></label>
           <label class="text-sm">Plataforma<select v-model="form.platform" class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option>WEB</option><option>APP</option><option>TODO</option></select></label>
           <label class="text-sm">Estado<select v-model="form.status" class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option>PENDIENTE</option><option>ACTIVO</option><option>CANCELADO</option><option>FINALIZADO</option></select></label>
+          <label class="text-sm">Acción al tocar<select v-model.number="form.actionType" class="app-input mt-1 w-full rounded-lg border px-3 py-2"><option v-for="action in actionTypes" :key="action.id" :value="action.id">{{ action.label }}</option></select></label>
           <label class="text-sm">Fecha inicial *<input v-model="form.startAt" required type="datetime-local" class="app-input mt-1 w-full rounded-lg border px-3 py-2"></label>
           <label class="text-sm">Fecha final *<input v-model="form.endAt" required type="datetime-local" class="app-input mt-1 w-full rounded-lg border px-3 py-2"></label>
           <label class="text-sm">Orden<input v-model.number="form.order" min="0" type="number" class="app-input mt-1 w-full rounded-lg border px-3 py-2"></label>
