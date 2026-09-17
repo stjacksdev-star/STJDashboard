@@ -692,9 +692,12 @@ async function cancelPromotion() {
     cancelling.value = true;
     editError.value = '';
     try {
-        await window.axios.post(`/dashboard-api/promotions/${selectedPromotion.value.id}/cancel`);
+        const response = await window.axios.post(`/dashboard-api/promotions/${selectedPromotion.value.id}/cancel`);
         showEditModal.value = false;
         await fetchPromotions();
+        if (response.data.data?.assetPublicationWarning) {
+            window.alert(response.data.data.assetPublicationWarning);
+        }
     } catch (exception) {
         editError.value = exception.response?.data?.errors?.promotion?.[0]
             || exception.response?.data?.message
@@ -716,9 +719,12 @@ async function activatePromotion() {
     activating.value = true;
     editError.value = '';
     try {
-        await window.axios.post(`/dashboard-api/promotions/${selectedPromotion.value.id}/activate`);
+        const response = await window.axios.post(`/dashboard-api/promotions/${selectedPromotion.value.id}/activate`);
         showEditModal.value = false;
         await fetchPromotions();
+        if (response.data.data?.assetPublicationWarning) {
+            window.alert(response.data.data.assetPublicationWarning);
+        }
     } catch (exception) {
         editError.value = exception.response?.data?.errors?.schedule?.[0]
             || exception.response?.data?.errors?.promotion?.[0]
