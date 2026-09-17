@@ -1405,6 +1405,19 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function cancelPromotion(int $id, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post("/dashboard/promotions/{$id}/cancel", ['actor' => $actor]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
     /**
      * @return array<string, mixed>
      *

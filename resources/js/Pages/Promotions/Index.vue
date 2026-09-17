@@ -36,6 +36,7 @@ const storeSearch = ref('');
 const storeSelectorContext = ref('create');
 const showEditModal = ref(false);
 const editing = ref(false);
+const cancelling = ref(false);
 const assetSaving = ref(false);
 const headerSaving = ref(false);
 const assetsLoading = ref(false);
@@ -679,6 +680,30 @@ async function updatePromotionSchedule() {
     }
 }
 
+async function cancelPromotion() {
+    if (selectedPromotion.value?.status !== 'EN-PROCESO' || cancelling.value) {
+        return;
+    }
+
+    if (!window.confirm(`¿Cancelar ahora la promocion #${selectedPromotion.value.id} y finalizar sus assets relacionados?`)) {
+        return;
+    }
+
+    cancelling.value = true;
+    editError.value = '';
+    try {
+        await window.axios.post(`/dashboard-api/promotions/${selectedPromotion.value.id}/cancel`);
+        showEditModal.value = false;
+        await fetchPromotions();
+    } catch (exception) {
+        editError.value = exception.response?.data?.errors?.promotion?.[0]
+            || exception.response?.data?.message
+            || 'No fue posible cancelar la promocion.';
+    } finally {
+        cancelling.value = false;
+    }
+}
+
 function onProductsSelected(event) {
     createForm.value.products = event.target.files?.[0] || null;
 }
@@ -845,7 +870,7 @@ function promotionHeaderImage(promotion) {
 const canEditStart = computed(() => selectedPromotion.value?.status === 'PENDIENTE');
 const canEditEnd = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(selectedPromotion.value?.status));
 const canEditSchedule = computed(() => canEditStart.value || canEditEnd.value);
-const canEditPromotion = computed(() => selectedPromotion.value?.status !== 'FINALIZADA');
+const canEditPromotion = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(selectedPromotion.value?.status));
 const canEditPromotionStores = computed(() =>
     selectedPromotion.value?.status === 'PENDIENTE'
     && selectedPromotion.value?.checkoutType !== 'D',
@@ -857,7 +882,6 @@ const keepsSelectedStoreScope = computed(() =>
 const canManagePromotionAssets = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(assetPromotion.value?.status));
 const currentUserId = computed(() => page.props.auth?.user?.idUser || page.props.auth?.user?.id || '');
 const activatePromotionUrl = computed(() => legacyPromotionTaskUrl('activarPromocion'));
-const deactivatePromotionUrl = computed(() => legacyPromotionTaskUrl('desactivarPromocion'));
 
 function legacyPromotionTaskUrl(task) {
     if (!selectedPromotion.value?.id || !currentUserId.value) {
@@ -1588,15 +1612,15 @@ onMounted(fetchPromotions);
 
                     <div class="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4" style="border-color: var(--stj-border);">
                         <div class="flex flex-wrap items-center gap-3">
-                            <a
-                                v-if="selectedPromotion.status === 'EN-PROCESO' && deactivatePromotionUrl"
-                                :href="deactivatePromotionUrl"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <button
+                                v-if="selectedPromotion.status === 'EN-PROCESO'"
+                                type="button"
+                                :disabled="cancelling"
+                                @click="cancelPromotion"
                                 class="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
                             >
-                                Cancelar Promocion ahora
-                            </a>
+                                {{ cancelling ? 'Cancelando...' : 'Cancelar Promocion ahora' }}
+                            </button>
                             <a
                                 v-if="selectedPromotion.status === 'PENDIENTE' && activatePromotionUrl"
                                 :href="activatePromotionUrl"
