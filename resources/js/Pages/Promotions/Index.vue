@@ -1,5 +1,5 @@
 <script setup>
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import DataTable from 'datatables.net-vue3';
 import DataTablesCore from 'datatables.net-dt';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -7,7 +7,6 @@ import AdminLayout from '../../Layouts/AdminLayout.vue';
 
 DataTable.use(DataTablesCore);
 
-const page = usePage();
 const loading = ref(true);
 const error = ref('');
 const selectedCountry = ref('');
@@ -37,6 +36,7 @@ const storeSelectorContext = ref('create');
 const showEditModal = ref(false);
 const editing = ref(false);
 const cancelling = ref(false);
+const activating = ref(false);
 const assetSaving = ref(false);
 const headerSaving = ref(false);
 const assetsLoading = ref(false);
@@ -704,6 +704,31 @@ async function cancelPromotion() {
     }
 }
 
+async function activatePromotion() {
+    if (selectedPromotion.value?.status !== 'PENDIENTE' || activating.value) {
+        return;
+    }
+
+    if (!window.confirm(`¿Activar ahora la promocion #${selectedPromotion.value.id} y sus assets vigentes?`)) {
+        return;
+    }
+
+    activating.value = true;
+    editError.value = '';
+    try {
+        await window.axios.post(`/dashboard-api/promotions/${selectedPromotion.value.id}/activate`);
+        showEditModal.value = false;
+        await fetchPromotions();
+    } catch (exception) {
+        editError.value = exception.response?.data?.errors?.schedule?.[0]
+            || exception.response?.data?.errors?.promotion?.[0]
+            || exception.response?.data?.message
+            || 'No fue posible activar la promocion.';
+    } finally {
+        activating.value = false;
+    }
+}
+
 function onProductsSelected(event) {
     createForm.value.products = event.target.files?.[0] || null;
 }
@@ -880,21 +905,6 @@ const keepsSelectedStoreScope = computed(() =>
     && (selectedPromotion.value?.tiendas?.length || 0) > 0,
 );
 const canManagePromotionAssets = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(assetPromotion.value?.status));
-const currentUserId = computed(() => page.props.auth?.user?.idUser || page.props.auth?.user?.id || '');
-const activatePromotionUrl = computed(() => legacyPromotionTaskUrl('activarPromocion'));
-
-function legacyPromotionTaskUrl(task) {
-    if (!selectedPromotion.value?.id || !currentUserId.value) {
-        return '';
-    }
-
-    const params = new URLSearchParams({
-        id: selectedPromotion.value.id,
-        sesId: currentUserId.value,
-    });
-
-    return `https://stjacks.com/Tareas/${task}?${params.toString()}`;
-}
 
 function statusHtml(status) {
     const normalized = String(status || 'N/D');
@@ -1621,15 +1631,15 @@ onMounted(fetchPromotions);
                             >
                                 {{ cancelling ? 'Cancelando...' : 'Cancelar Promocion ahora' }}
                             </button>
-                            <a
-                                v-if="selectedPromotion.status === 'PENDIENTE' && activatePromotionUrl"
-                                :href="activatePromotionUrl"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <button
+                                v-if="selectedPromotion.status === 'PENDIENTE'"
+                                type="button"
+                                :disabled="activating"
+                                @click="activatePromotion"
                                 class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
                             >
-                                Activar Promocion ahora
-                            </a>
+                                {{ activating ? 'Activando...' : 'Activar Promocion ahora' }}
+                            </button>
                         </div>
 
                         <div class="flex items-center justify-end gap-3">

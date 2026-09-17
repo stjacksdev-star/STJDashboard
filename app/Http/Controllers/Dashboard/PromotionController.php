@@ -221,6 +221,27 @@ class PromotionController extends Controller
         }
     }
 
+    public function activate(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->activatePromotion($promotion, $this->actor($request)),
+                'message' => 'Promocion y assets vigentes activados correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible activar la promocion en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
     public function assets(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
