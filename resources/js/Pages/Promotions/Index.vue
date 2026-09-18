@@ -685,7 +685,7 @@ async function cancelPromotion() {
         return;
     }
 
-    if (!window.confirm(`¿Cancelar ahora la promocion #${selectedPromotion.value.id} y finalizar sus assets relacionados?`)) {
+    if (!window.confirm(`¿Cancelar ahora la promocion #${selectedPromotion.value.id} y cerrar la vigencia de sus assets relacionados?`)) {
         return;
     }
 

@@ -210,7 +210,7 @@ class PromotionController extends Controller
             return response()->json([
                 'ok' => true,
                 'data' => $api->cancelPromotion($promotion, $this->actor($request)),
-                'message' => 'Promocion y assets relacionados cancelados correctamente.',
+                'message' => 'Promocion cancelada y vigencia de sus assets cerrada correctamente.',
             ]);
         } catch (RequestException $exception) {
             return response()->json([
