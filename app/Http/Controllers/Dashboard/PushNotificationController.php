@@ -47,7 +47,8 @@ class PushNotificationController extends Controller
             'image' => ['nullable', 'image', 'max:5120'],
             'action' => ['required', 'string', 'max:500'],
             'to' => ['nullable', 'string', 'max:500'],
-            'platform' => ['required', 'string', Rule::in(['Todo', 'Android', 'Ios'])],
+            'platform' => ['required', 'string', Rule::in(['Todo', 'Android', 'Ios', 'WEB'])],
+            'environment' => ['required', 'string', Rule::in(['TEST', 'PRODUCTION'])],
             'scheduledAt' => ['required', 'date'],
             'promotionId' => ['nullable', 'integer', 'min:1'],
         ]);

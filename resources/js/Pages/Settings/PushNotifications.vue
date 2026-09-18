@@ -17,6 +17,7 @@ const errors = ref({});
 const notifications = ref([]);
 const statuses = ref(['TODO', 'PENDIENTE', 'ENVIADO', 'ERROR', 'CANCELADO']);
 const platforms = ref(defaultPlatforms());
+const environments = ref(defaultEnvironments());
 const topics = ref(defaultTopics());
 const tableKey = ref(0);
 const showModal = ref(false);
@@ -30,6 +31,7 @@ const columns = [
     { data: 'title', title: 'Titulo' },
     { data: 'body', title: 'Cuerpo' },
     { data: 'platformLabel', title: 'Plataforma', width: '120px' },
+    { data: 'environmentLabel', title: 'Entorno', width: '100px' },
     { data: 'to', title: 'Destino', width: '160px' },
     { data: 'action', title: 'Accion' },
     { data: 'result', title: 'Resultado' },
@@ -64,6 +66,7 @@ const rows = computed(() =>
         scheduledAtLabel: formatDateTime(item.scheduledAt),
         statusLabel: statusHtml(item.status),
         platformLabel: item.platform || 'WEB',
+        environmentLabel: item.environment === 'TEST' ? 'Pruebas' : 'Producción',
         to: item.to || 'N/D',
         body: truncate(item.body, 120),
         action: truncate(item.action, 80),
@@ -86,6 +89,7 @@ async function fetchNotifications() {
         notifications.value = response.data.data?.notifications || [];
         statuses.value = response.data.data?.options?.statuses || statuses.value;
         platforms.value = response.data.data?.options?.platforms || defaultPlatforms();
+        environments.value = response.data.data?.options?.environments || defaultEnvironments();
         topics.value = response.data.data?.options?.topics || defaultTopics();
         tableKey.value += 1;
     } catch (exception) {
@@ -193,6 +197,7 @@ function defaultForm() {
         image: null,
         action: 'https://stjacks.com',
         platform: 'Todo',
+        environment: 'TEST',
         to: '',
         scheduledAt: toDateTimeInput(nextHour),
         promotionId: '',
@@ -215,6 +220,7 @@ function normalizePayload(values) {
     payload.append('body', values.body);
     payload.append('action', values.action);
     payload.append('platform', values.platform);
+    payload.append('environment', values.environment);
     payload.append('scheduledAt', values.scheduledAt);
 
     if (values.to) {
@@ -237,6 +243,14 @@ function defaultPlatforms() {
         { value: 'Todo', label: 'Todo' },
         { value: 'Android', label: 'Android' },
         { value: 'Ios', label: 'Ios' },
+        { value: 'WEB', label: 'Web' },
+    ];
+}
+
+function defaultEnvironments() {
+    return [
+        { value: 'TEST', label: 'Pruebas' },
+        { value: 'PRODUCTION', label: 'Producción' },
     ];
 }
 
@@ -476,7 +490,16 @@ function actionsHtml(item) {
                             </label>
                         </div>
 
-                        <div class="mt-4 grid gap-4 lg:grid-cols-3">
+                        <div class="mt-4 grid gap-4 lg:grid-cols-4">
+                            <label class="block">
+                                <span class="app-muted text-sm font-medium">Entorno</span>
+                                <select v-model="form.environment" required class="stj-input mt-2">
+                                    <option v-for="environment in environments" :key="environment.value" :value="environment.value">
+                                        {{ environment.label }}
+                                    </option>
+                                </select>
+                                <span v-if="fieldError('environment')" class="stj-field-error">{{ fieldError('environment') }}</span>
+                            </label>
                             <label class="block">
                                 <span class="app-muted text-sm font-medium">Plataforma</span>
                                 <select v-model="form.platform" required class="stj-input mt-2">
