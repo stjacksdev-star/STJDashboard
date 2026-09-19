@@ -122,7 +122,13 @@ const lineEditProjectedDifference = computed(() => {
     const quantity = Math.max(0, Number(lineForm.value.quantity || 0));
     const discount = Math.max(0, Math.min(100, Number(lineForm.value.discount || 0)));
     const currentSubtotal = Number(editingProduct.value.chargedSubtotal || 0);
-    const nextSubtotal = quantity * (price * (1 - (discount / 100)));
+    const unchanged = price === Number(editingProduct.value.price)
+        && quantity === Number(editingProduct.value.quantity)
+        && discount === Number(editingProduct.value.discount)
+        && String(lineForm.value.sku).trim() === String(editingProduct.value.sku)
+        && String(lineForm.value.size).trim() === String(editingProduct.value.size);
+    const base = roundMoney(quantity * price);
+    const nextSubtotal = unchanged ? currentSubtotal : roundMoney(base - roundMoney(base * discount / 100));
     const currentCalculated = Number(order.value?.totals?.paidCalculated || 0);
     const paid = Number(order.value?.totals?.paid || 0);
 
