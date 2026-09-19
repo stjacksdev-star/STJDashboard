@@ -1259,9 +1259,9 @@ onMounted(() => {
                                             step="0.01"
                                             class="app-surface app-text h-9 w-20 rounded-md border px-2 text-right text-sm outline-none"
                                         />
-                                        <span v-else>{{ formatMoney(product.discount) }}%</span>
+                                        <span v-else>{{ Number(Number(product.discount).toFixed(2)) }}%</span>
                                     </td>
-                                    <td class="app-text px-3 py-2 text-right">{{ formatMoney(product.billedDiscount) }}%</td>
+                                    <td class="app-text px-3 py-2 text-right">{{ Number(Number(product.billedDiscount).toFixed(2)) }}%</td>
                                     <td class="app-text px-3 py-2 text-right">{{ productSubtotal(product, 'chargedSubtotal') }}</td>
                                     <td class="app-text px-3 py-2 text-right">{{ productSubtotal(product, 'billedSubtotal') }}</td>
                                 </tr>
