@@ -1080,6 +1080,13 @@ onMounted(() => {
                     </div>
                 </div>
 
+                <div class="app-surface mt-4 rounded-lg border p-5">
+                    <p class="app-primary-text text-xs font-semibold uppercase">Observaciones del cliente</p>
+                    <p class="app-text mt-4 whitespace-pre-wrap break-words text-sm leading-6">
+                        {{ display(order.customerNotes) }}
+                    </p>
+                </div>
+
                 <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
                     <div class="app-surface rounded-lg border p-5">
                         <p class="app-muted text-xs font-semibold uppercase">Articulos</p>
