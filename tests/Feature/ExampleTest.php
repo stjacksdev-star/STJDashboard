@@ -57,8 +57,7 @@ class ExampleTest extends TestCase
             ->assertSessionHas('stj.user.bearer', 'valid-token')
             ->assertSessionHas('stj.user.idPais', 1);
 
-        Http::assertSent(fn ($request) =>
-            $request->hasHeader('Authorization', 'Bearer valid-token')
+        Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer valid-token')
             && $request->hasHeader('Signature', 'Token test-signature')
             && $request->hasHeader('STJ', 'Bearer valid-token')
             && $request->hasHeader('Origin', 'http://127.0.0.1:8001')
@@ -145,8 +144,7 @@ class ExampleTest extends TestCase
             'endAt' => '2026-08-02 20:00:00',
         ]);
 
-        Http::assertSent(fn (Request $request) =>
-            $request['storeScope'] === 'SELECCIONADAS'
+        Http::assertSent(fn (Request $request) => $request['storeScope'] === 'SELECCIONADAS'
             && $request['stores'] === [12, 15]
         );
     }
@@ -167,8 +165,33 @@ class ExampleTest extends TestCase
         $stores = app(DashboardApiClient::class)->promotionStores('SV');
 
         $this->assertSame(12, $stores[0]['id']);
-        Http::assertSent(fn (Request $request) =>
-            $request->url() === 'https://api.example.test/api/dashboard/promotions/stores?country=SV'
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://api.example.test/api/dashboard/promotions/stores?country=SV'
+        );
+    }
+
+    public function test_promotion_reactivation_sends_only_new_dates_and_actor(): void
+    {
+        config([
+            'stj.api.base_url' => 'https://api.example.test/api',
+            'stj.api.dashboard_token' => 'test-token',
+        ]);
+
+        Http::fake([
+            'https://api.example.test/api/dashboard/promotions/2103/reactivate' => Http::response([
+                'data' => ['id' => 2103, 'status' => 'PENDIENTE'],
+            ]),
+        ]);
+
+        app(DashboardApiClient::class)->reactivatePromotion(2103, [
+            'startAt' => '2026-10-05 00:00:00',
+            'endAt' => '2026-10-10 23:59:00',
+        ], ['id' => '25']);
+
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://api.example.test/api/dashboard/promotions/2103/reactivate'
+            && $request['startAt'] === '2026-10-05 00:00:00'
+            && $request['endAt'] === '2026-10-10 23:59:00'
+            && $request['actor']['id'] === '25'
+            && count($request->data()) === 3
         );
     }
 
@@ -192,8 +215,7 @@ class ExampleTest extends TestCase
             ['id' => '25'],
         );
 
-        Http::assertSent(fn (Request $request) =>
-            $request->url() === 'https://api.example.test/api/dashboard/promotions/1998/stores'
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://api.example.test/api/dashboard/promotions/1998/stores'
             && $request['storeScope'] === 'SELECCIONADAS'
             && $request['stores'] === [4, 9]
         );

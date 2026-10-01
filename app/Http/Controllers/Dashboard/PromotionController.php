@@ -111,7 +111,7 @@ class PromotionController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function restrictPromotionPayload(array $data, array $user, UserCountryAccessService $countryAccess): array
@@ -195,6 +195,32 @@ class PromotionController extends Controller
             return response()->json([
                 'ok' => false,
                 'message' => $exception->response?->json('message') ?: 'No fue posible actualizar las tiendas en stj-api.',
+                'errors' => $exception->response?->json('errors') ?: [],
+            ], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function reactivate(Request $request, int $promotion, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
+    {
+        if (! $this->canAccessPromotion($api, $countryAccess, (array) $request->session()->get('stj.user', []), $promotion)) {
+            return $this->countryForbidden();
+        }
+
+        $validated = $request->validate([
+            'startAt' => ['required', 'date'],
+            'endAt' => ['required', 'date', 'after:startAt'],
+        ]);
+
+        try {
+            return response()->json([
+                'ok' => true,
+                'data' => $api->reactivatePromotion($promotion, $validated, $this->actor($request)),
+                'message' => 'Promocion reactivada como pendiente correctamente.',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => $exception->response?->json('message') ?: 'No fue posible reactivar la promocion en stj-api.',
                 'errors' => $exception->response?->json('errors') ?: [],
             ], $exception->response?->status() ?: 502);
         }

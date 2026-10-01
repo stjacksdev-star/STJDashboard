@@ -15,6 +15,7 @@ class DashboardApiClient
             ->timeout((int) config('stj.api.timeout'))->withToken((string) config('stj.api.dashboard_token'))
             ->acceptJson()->get('/dashboard/reports/product-performance', array_filter($filters, fn ($value) => $value !== null && $value !== ''));
         $response->throw();
+
         return $response->json('data') ?? [];
     }
 
@@ -25,15 +26,16 @@ class DashboardApiClient
             ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
             ->get('/dashboard/reports/product-performance/export', array_filter($filters, fn ($value) => $value !== null && $value !== ''));
         $response->throw();
+
         return $response;
     }
-
 
     public function coupons(?string $country = null, ?string $status = null, ?string $search = null, int $page = 1, int $perPage = 20): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
             ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->get('/dashboard/coupons', array_filter(['country' => $country, 'status' => $status, 'search' => $search, 'page' => $page, 'perPage' => $perPage], fn ($value) => $value !== null && $value !== ''));
         $response->throw();
+
         return $response->json('data') ?? [];
     }
 
@@ -43,6 +45,7 @@ class DashboardApiClient
             ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->asJson();
         $response = $coupon ? $request->put('/dashboard/coupons/'.$coupon, $data) : $request->post('/dashboard/coupons', $data);
         $response->throw();
+
         return $response->json('data') ?? [];
     }
 
@@ -61,7 +64,9 @@ class DashboardApiClient
     public function couponCatalogs(string $country): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->get('/dashboard/coupons/catalogs', ['country' => $country]);
-        $response->throw(); return $response->json('data') ?? [];
+        $response->throw();
+
+        return $response->json('data') ?? [];
     }
 
     public function couponUsageReport(array $filters): array
@@ -79,10 +84,16 @@ class DashboardApiClient
     public function saveCouponMultipart(array $data, ?int $coupon, ?UploadedFile $products, ?UploadedFile $customers): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout(120)->withToken((string) config('stj.api.dashboard_token'))->acceptJson();
-        if ($products) $request = $request->attach('productsFile', fopen($products->getRealPath(), 'rb'), $products->getClientOriginalName());
-        if ($customers) $request = $request->attach('customersFile', fopen($customers->getRealPath(), 'rb'), $customers->getClientOriginalName());
+        if ($products) {
+            $request = $request->attach('productsFile', fopen($products->getRealPath(), 'rb'), $products->getClientOriginalName());
+        }
+        if ($customers) {
+            $request = $request->attach('customersFile', fopen($customers->getRealPath(), 'rb'), $customers->getClientOriginalName());
+        }
         $response = $request->post('/dashboard/coupons'.($coupon ? '/'.$coupon : ''), collect($data)->map(fn ($v) => $v === null ? '' : (string) $v)->all());
-        $response->throw(); return $response->json('data') ?? [];
+        $response->throw();
+
+        return $response->json('data') ?? [];
     }
 
     /**
@@ -366,7 +377,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -415,8 +426,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $filters
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -440,7 +451,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -470,11 +481,12 @@ class DashboardApiClient
             ->acceptJson()
             ->get('/dashboard/orders/abandoned', array_filter($filters, fn ($value) => filled($value)));
         $response->throw();
+
         return $response->json('data') ?? [];
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -519,7 +531,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -542,7 +554,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -567,7 +579,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -591,7 +603,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -614,7 +626,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      *
      * @throws RequestException
      */
@@ -636,7 +648,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -662,11 +674,11 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      *
      * @throws RequestException
      */
-    public function accounting3Export(array $filters): \Illuminate\Http\Client\Response
+    public function accounting3Export(array $filters): Response
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout(max(300, (int) config('stj.api.timeout')))
@@ -686,7 +698,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -730,7 +742,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -773,8 +785,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -796,8 +808,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -833,7 +845,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -854,7 +866,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -896,8 +908,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -955,8 +967,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1013,8 +1025,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1043,7 +1055,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1068,7 +1080,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1091,7 +1103,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1114,7 +1126,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1137,7 +1149,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1199,7 +1211,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<int, int> $stores
+     * @param  array<int, int>  $stores
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1244,7 +1256,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1264,7 +1276,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1299,7 +1311,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1374,7 +1386,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1418,6 +1430,23 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function reactivatePromotion(int $id, array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->post("/dashboard/promotions/{$id}/reactivate", [
+                'startAt' => $data['startAt'],
+                'endAt' => $data['endAt'],
+                'actor' => $actor,
+            ]);
+
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
     public function activatePromotion(int $id, array $actor = []): array
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
@@ -1452,8 +1481,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1475,8 +1504,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1686,7 +1715,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1712,7 +1741,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1763,7 +1792,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1800,7 +1829,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1827,7 +1856,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      *
      * @throws RequestException
      */
@@ -1852,8 +1881,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1882,8 +1911,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1926,8 +1955,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $filters
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $filters
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1953,8 +1982,8 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1981,7 +2010,7 @@ class DashboardApiClient
     }
 
     /**
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -2004,7 +2033,7 @@ class DashboardApiClient
     /**
      * Encode nested actor data using PHP multipart field notation.
      *
-     * @param array<string, mixed> $actor
+     * @param  array<string, mixed>  $actor
      * @return array<string, string>
      */
     private function multipartActor(array $actor): array
@@ -2020,6 +2049,7 @@ class DashboardApiClient
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
             ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()->get('/dashboard/standalone-assets');
         $response->throw();
+
         return $response->json('data') ?? [];
     }
 
@@ -2027,10 +2057,15 @@ class DashboardApiClient
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout(120)
             ->withToken((string) config('stj.api.dashboard_token'))->acceptJson();
-        if ($image) $request = $request->attach('image', fopen($image->getRealPath(), 'rb'), $image->getClientOriginalName());
-        if ($mobileImage) $request = $request->attach('mobileImage', fopen($mobileImage->getRealPath(), 'rb'), $mobileImage->getClientOriginalName());
+        if ($image) {
+            $request = $request->attach('image', fopen($image->getRealPath(), 'rb'), $image->getClientOriginalName());
+        }
+        if ($mobileImage) {
+            $request = $request->attach('mobileImage', fopen($mobileImage->getRealPath(), 'rb'), $mobileImage->getClientOriginalName());
+        }
         $response = $request->post('/dashboard/standalone-assets'.($asset ? '/'.$asset : ''), collect($data)->map(fn ($value) => $value === null ? '' : (string) $value)->all());
         $response->throw();
+
         return $response->json('data') ?? [];
     }
 }

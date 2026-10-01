@@ -37,6 +37,7 @@ const showEditModal = ref(false);
 const editing = ref(false);
 const cancelling = ref(false);
 const activating = ref(false);
+const reactivating = ref(false);
 const assetSaving = ref(false);
 const headerSaving = ref(false);
 const assetsLoading = ref(false);
@@ -525,8 +526,8 @@ async function openEditModal(promotion) {
     selectedPromotion.value = promotion;
     editForm.value = {
         commercialName: promotion.commercialName || '',
-        startAt: sqlToDatetimeLocal(promotion.startAt),
-        endAt: sqlToDatetimeLocal(promotion.endAt),
+        startAt: promotion.status === 'FINALIZADA' ? '' : sqlToDatetimeLocal(promotion.startAt),
+        endAt: promotion.status === 'FINALIZADA' ? '' : sqlToDatetimeLocal(promotion.endAt),
         storeScope: promotion.storeScope || (promotion.checkoutType === 'D' ? null : 'TODAS'),
         stores: (promotion.tiendas || []).map((store) => store.id),
         products: null,
@@ -704,6 +705,30 @@ async function cancelPromotion() {
             || 'No fue posible cancelar la promocion.';
     } finally {
         cancelling.value = false;
+    }
+}
+
+async function reactivatePromotion() {
+    if (selectedPromotion.value?.status !== 'FINALIZADA' || reactivating.value) {
+        return;
+    }
+
+    reactivating.value = true;
+    editError.value = '';
+    editErrors.value = {};
+
+    try {
+        await window.axios.post(`/dashboard-api/promotions/${selectedPromotion.value.id}/reactivate`, {
+            startAt: editForm.value.startAt,
+            endAt: editForm.value.endAt,
+        });
+        showEditModal.value = false;
+        await fetchPromotions();
+    } catch (exception) {
+        editError.value = exception.response?.data?.message || 'No fue posible reactivar la promocion.';
+        editErrors.value = exception.response?.data?.errors || {};
+    } finally {
+        reactivating.value = false;
     }
 }
 
@@ -898,8 +923,9 @@ function promotionHeaderImage(promotion) {
     return `/images/${header}`;
 }
 
-const canEditStart = computed(() => selectedPromotion.value?.status === 'PENDIENTE');
-const canEditEnd = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(selectedPromotion.value?.status));
+const canReactivatePromotion = computed(() => selectedPromotion.value?.status === 'FINALIZADA');
+const canEditStart = computed(() => ['PENDIENTE', 'FINALIZADA'].includes(selectedPromotion.value?.status));
+const canEditEnd = computed(() => ['PENDIENTE', 'EN-PROCESO', 'FINALIZADA'].includes(selectedPromotion.value?.status));
 const canEditSchedule = computed(() => canEditStart.value || canEditEnd.value);
 const canEditPromotion = computed(() => ['PENDIENTE', 'EN-PROCESO'].includes(selectedPromotion.value?.status));
 const canEditPromotionStores = computed(() =>
@@ -1442,7 +1468,15 @@ onMounted(fetchPromotions);
                         </div>
 
                         <div
-                            v-if="!canEditPromotion"
+                            v-if="canReactivatePromotion"
+                            class="mb-5 rounded-md border px-4 py-3 text-sm"
+                            style="border-color: var(--stj-border); color: var(--stj-muted);"
+                        >
+                            Ingrese una nueva fecha de inicio y fin para reactivar esta promocion y sus assets. Todo se guardara como PENDIENTE y el cron lo activara cuando corresponda.
+                        </div>
+
+                        <div
+                            v-else-if="!canEditPromotion"
                             class="mb-5 rounded-md border px-4 py-3 text-sm"
                             style="border-color: var(--stj-border); color: var(--stj-muted);"
                         >
@@ -1645,6 +1679,15 @@ onMounted(fetchPromotions);
                                 class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
                             >
                                 {{ activating ? 'Activando...' : 'Activar Promocion ahora' }}
+                            </button>
+                            <button
+                                v-if="canReactivatePromotion"
+                                type="button"
+                                :disabled="reactivating || !editForm.startAt || !editForm.endAt"
+                                @click="reactivatePromotion"
+                                class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                            >
+                                {{ reactivating ? 'Reactivando...' : 'Reactivar promocion' }}
                             </button>
                         </div>
 

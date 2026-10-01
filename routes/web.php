@@ -7,11 +7,11 @@ use App\Http\Controllers\Dashboard\ClaimController;
 use App\Http\Controllers\Dashboard\CollectionController;
 use App\Http\Controllers\Dashboard\CouponController;
 use App\Http\Controllers\Dashboard\OrderController;
-use App\Http\Controllers\Dashboard\PromotionController;
 use App\Http\Controllers\Dashboard\ProductCategoryController;
 use App\Http\Controllers\Dashboard\ProductCountryController;
 use App\Http\Controllers\Dashboard\ProductMasterController;
 use App\Http\Controllers\Dashboard\ProductPerformanceReportController;
+use App\Http\Controllers\Dashboard\PromotionController;
 use App\Http\Controllers\Dashboard\PushNotificationController;
 use App\Http\Controllers\Dashboard\SalesController;
 use App\Http\Controllers\Dashboard\StandaloneAssetController;
@@ -51,6 +51,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.promotions.store');
     Route::post('/dashboard-api/promotions/{promotion}/schedule', [PromotionController::class, 'updateSchedule'])
         ->name('dashboard-api.promotions.schedule.update');
+    Route::post('/dashboard-api/promotions/{promotion}/reactivate', [PromotionController::class, 'reactivate'])
+        ->name('dashboard-api.promotions.reactivate');
     Route::post('/dashboard-api/promotions/{promotion}/cancel', [PromotionController::class, 'cancel'])
         ->name('dashboard-api.promotions.cancel');
     Route::post('/dashboard-api/promotions/{promotion}/activate', [PromotionController::class, 'activate'])
@@ -223,6 +225,7 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('promotions.index');
     Route::get('/assets', function (Request $request) {
         abort_unless(in_array('ROOT', DashboardAccess::permissions($request->session()->get('stj.user')), true), 403, 'Solo un usuario ROOT puede acceder a esta gestion.');
+
         return Inertia::render('Assets/Index');
     })->name('assets.index');
     Route::get('/cupones/mantenimiento', fn () => Inertia::render('Coupons/Index'))->name('coupons.index');
@@ -249,6 +252,7 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('orders.processed');
     Route::get('/pedidos/abandonados', function (Request $request) {
         abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'PEDIDOS_ABANDONADOS'), 403);
+
         return Inertia::render('Orders/Abandoned');
     })->name('orders.abandoned');
     Route::get('/pedidos/devoluciones', fn () => Inertia::render('Orders/Refunds'))
