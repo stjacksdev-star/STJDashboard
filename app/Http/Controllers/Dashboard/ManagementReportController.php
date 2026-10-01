@@ -198,4 +198,27 @@ class ManagementReportController extends Controller
             return response()->json(['ok' => false, 'message' => $exception->response?->json('message') ?: 'No fue posible cargar el reporte de visitas desde stj-api.'], $exception->response?->status() ?: 502);
         }
     }
+
+    public function visitDetailsExport(Request $request, DashboardApiClient $api): Response|JsonResponse
+    {
+        if (! $this->allowed($request)) {
+            return $this->forbidden();
+        }
+        $filters = $request->validate([
+            'startDate' => ['required', 'date'], 'endDate' => ['required', 'date'],
+            'country' => ['nullable', 'string', 'max:7'],
+            'platform' => ['nullable', 'in:TODAS,WEB,APP-IOS,APP-ANDROID'],
+        ]);
+        try {
+            $response = $api->managementVisitDetailsExport($filters);
+
+            return response($response->body(), $response->status(), [
+                'Content-Type' => $response->header('Content-Type'),
+                'Content-Disposition' => $response->header('Content-Disposition'),
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]);
+        } catch (RequestException $exception) {
+            return response()->json(['ok' => false, 'message' => 'No fue posible exportar el reporte desde stj-api.'], $exception->response?->status() ?: 502);
+        }
+    }
 }

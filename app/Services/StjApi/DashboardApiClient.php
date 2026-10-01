@@ -2155,6 +2155,17 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function managementVisitDetailsExport(array $filters): Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->get('/dashboard/reports/management/visit-details/export', $filters);
+        $response->throw();
+
+        return $response;
+    }
+
     public function saveStandaloneAsset(array $data, ?int $asset, ?UploadedFile $image, ?UploadedFile $mobileImage): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout(120)

@@ -214,6 +214,7 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
     Route::get('/dashboard-api/reports/management/platform-sales', [ManagementReportController::class, 'platformSales']);
     Route::get('/dashboard-api/reports/management/platform-sales/orders', [ManagementReportController::class, 'platformSalesOrders']);
     Route::get('/dashboard-api/reports/management/visit-details', [ManagementReportController::class, 'visitDetails']);
+    Route::get('/dashboard-api/reports/management/visit-details/export', [ManagementReportController::class, 'visitDetailsExport']);
     Route::get('/dashboard-api/reports/accounting/sales-by-store/pdf', [AccountingReportController::class, 'salesByStorePdf'])
         ->name('dashboard-api.reports.accounting.sales-by-store.pdf');
     Route::get('/dashboard-api/orders/product', [OrderController::class, 'product'])
