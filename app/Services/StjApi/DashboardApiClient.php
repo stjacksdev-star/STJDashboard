@@ -2077,6 +2077,54 @@ class DashboardApiClient
         return $response;
     }
 
+    public function managementMonthlySales(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/management/monthly-sales', $filters);
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    public function managementMonthlySalesExport(array $filters): Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->get('/dashboard/reports/management/monthly-sales/export', $filters);
+        $response->throw();
+
+        return $response;
+    }
+
+    public function managementCyberMonday(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/management/cyber-monday', $filters);
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    public function managementCyberMondayExport(array $filters): Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.ms-excel')
+            ->get('/dashboard/reports/management/cyber-monday/export', $filters);
+        $response->throw();
+
+        return $response;
+    }
+
     public function saveStandaloneAsset(array $data, ?int $asset, ?UploadedFile $image, ?UploadedFile $mobileImage): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout(120)

@@ -203,6 +203,14 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.reports.management.daily-sales');
     Route::get('/dashboard-api/reports/management/daily-sales/export', [ManagementReportController::class, 'dailySalesExport'])
         ->name('dashboard-api.reports.management.daily-sales.export');
+    Route::get('/dashboard-api/reports/management/monthly-sales', [ManagementReportController::class, 'monthlySales'])
+        ->name('dashboard-api.reports.management.monthly-sales');
+    Route::get('/dashboard-api/reports/management/monthly-sales/export', [ManagementReportController::class, 'monthlySalesExport'])
+        ->name('dashboard-api.reports.management.monthly-sales.export');
+    Route::get('/dashboard-api/reports/management/cyber-monday', [ManagementReportController::class, 'cyberMonday'])
+        ->name('dashboard-api.reports.management.cyber-monday');
+    Route::get('/dashboard-api/reports/management/cyber-monday/export', [ManagementReportController::class, 'cyberMondayExport'])
+        ->name('dashboard-api.reports.management.cyber-monday.export');
     Route::get('/dashboard-api/reports/accounting/sales-by-store/pdf', [AccountingReportController::class, 'salesByStorePdf'])
         ->name('dashboard-api.reports.accounting.sales-by-store.pdf');
     Route::get('/dashboard-api/orders/product', [OrderController::class, 'product'])
@@ -305,12 +313,12 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
     Route::get('/reportes/gerencias/venta-mes', function (Request $request) {
         abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA_GERE'), 403);
 
-        return Inertia::render('Modules/Placeholder', ['title' => 'Reportes / Gerencias / Venta x Mes']);
+        return Inertia::render('Reports/ManagementMonthlySales');
     });
     Route::get('/reportes/gerencias/cyber-monday', function (Request $request) {
         abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA_GERE'), 403);
 
-        return Inertia::render('Modules/Placeholder', ['title' => 'Reportes / Gerencias / Cyber Monday']);
+        return Inertia::render('Reports/ManagementCyberMonday');
     });
     Route::get('/configuracion/usuarios-paises', fn () => Inertia::render('Settings/UserCountryAccess'))
         ->name('settings.user-country-access');
