@@ -181,4 +181,21 @@ class ManagementReportController extends Controller
     {
         return ['country' => ['required', 'string', 'max:3'], 'startDate' => ['required', 'date'], 'endDate' => ['required', 'date']];
     }
+
+    public function visitDetails(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! $this->allowed($request)) {
+            return $this->forbidden();
+        }
+        $filters = $request->validate([
+            'startDate' => ['required', 'date'], 'endDate' => ['required', 'date'],
+            'country' => ['nullable', 'string', 'max:7'],
+            'platform' => ['nullable', 'in:TODAS,WEB,APP-IOS,APP-ANDROID'],
+        ]);
+        try {
+            return response()->json(['ok' => true, 'data' => $api->managementVisitDetails($filters)]);
+        } catch (RequestException $exception) {
+            return response()->json(['ok' => false, 'message' => $exception->response?->json('message') ?: 'No fue posible cargar el reporte de visitas desde stj-api.'], $exception->response?->status() ?: 502);
+        }
+    }
 }

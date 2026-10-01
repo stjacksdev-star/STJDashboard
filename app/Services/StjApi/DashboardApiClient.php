@@ -2145,6 +2145,16 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function managementVisitDetails(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()
+            ->get('/dashboard/reports/management/visit-details', $filters);
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
     public function saveStandaloneAsset(array $data, ?int $asset, ?UploadedFile $image, ?UploadedFile $mobileImage): array
     {
         $request = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout(120)

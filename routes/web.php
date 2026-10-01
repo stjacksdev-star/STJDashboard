@@ -213,6 +213,7 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.reports.management.cyber-monday.export');
     Route::get('/dashboard-api/reports/management/platform-sales', [ManagementReportController::class, 'platformSales']);
     Route::get('/dashboard-api/reports/management/platform-sales/orders', [ManagementReportController::class, 'platformSalesOrders']);
+    Route::get('/dashboard-api/reports/management/visit-details', [ManagementReportController::class, 'visitDetails']);
     Route::get('/dashboard-api/reports/accounting/sales-by-store/pdf', [AccountingReportController::class, 'salesByStorePdf'])
         ->name('dashboard-api.reports.accounting.sales-by-store.pdf');
     Route::get('/dashboard-api/orders/product', [OrderController::class, 'product'])
@@ -326,6 +327,11 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA_GERE'), 403);
 
         return Inertia::render('Reports/ManagementPlatformSales');
+    });
+    Route::get('/reportes/gerencias/visitas-detalles', function (Request $request) {
+        abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA_GERE'), 403);
+
+        return Inertia::render('Reports/ManagementVisitDetails');
     });
     Route::get('/configuracion/usuarios-paises', fn () => Inertia::render('Settings/UserCountryAccess'))
         ->name('settings.user-country-access');
