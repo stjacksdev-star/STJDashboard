@@ -84,4 +84,15 @@ class ExampleTest extends TestCase
         $this->assertNotContains('LOG', $labels);
         $this->assertNotContains('Paises por usuario', $labels);
     }
+
+    public function test_management_reports_group_requires_its_permission_and_exposes_three_reports(): void
+    {
+        $withoutPermission = DashboardMenu::forUser(['operaciones' => []]);
+        $withPermission = DashboardMenu::forUser(['operaciones' => [['ope_codigo' => 'MENU_REPO_VENTA_GERE']]]);
+
+        $this->assertNull(collect($withoutPermission)->flatMap(fn (array $section) => $section['items'])->firstWhere('label', 'Gerencias'));
+
+        $group = collect($withPermission)->flatMap(fn (array $section) => $section['items'])->firstWhere('label', 'Gerencias');
+        $this->assertSame(['Venta x Día', 'Venta x Mes', 'Cyber Monday'], collect($group['children'])->pluck('label')->all());
+    }
 }

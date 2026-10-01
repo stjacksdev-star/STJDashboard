@@ -62,6 +62,11 @@ class DashboardMenu
                         self::item('Venta general 2', '/reportes/contabilidad/venta-general-2', permission: 'MENU_CONTABILIDAD_2'),
                         self::item('Venta general 3', '/reportes/contabilidad/venta-general-3', permission: 'MENU_CONTABILIDAD_3'),
                     ], 'MENU_CONTABILIDAD'),
+                    self::group('Gerencias', 'chart', [
+                        self::item('Venta x Día', '/reportes/gerencias/venta-dia'),
+                        self::item('Venta x Mes', '/reportes/gerencias/venta-mes'),
+                        self::item('Cyber Monday', '/reportes/gerencias/cyber-monday'),
+                    ], 'MENU_REPO_VENTA_GERE'),
                 ],
             ],
             [

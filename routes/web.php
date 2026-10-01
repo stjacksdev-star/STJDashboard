@@ -6,6 +6,7 @@ use App\Http\Controllers\Dashboard\AppointmentController;
 use App\Http\Controllers\Dashboard\ClaimController;
 use App\Http\Controllers\Dashboard\CollectionController;
 use App\Http\Controllers\Dashboard\CouponController;
+use App\Http\Controllers\Dashboard\ManagementReportController;
 use App\Http\Controllers\Dashboard\OrderController;
 use App\Http\Controllers\Dashboard\ProductCategoryController;
 use App\Http\Controllers\Dashboard\ProductCountryController;
@@ -198,6 +199,10 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.reports.accounting.3.count');
     Route::get('/dashboard-api/reports/accounting/3/export', [AccountingReportController::class, 'export3'])
         ->name('dashboard-api.reports.accounting.3.export');
+    Route::get('/dashboard-api/reports/management/daily-sales', [ManagementReportController::class, 'dailySales'])
+        ->name('dashboard-api.reports.management.daily-sales');
+    Route::get('/dashboard-api/reports/management/daily-sales/export', [ManagementReportController::class, 'dailySalesExport'])
+        ->name('dashboard-api.reports.management.daily-sales.export');
     Route::get('/dashboard-api/reports/accounting/sales-by-store/pdf', [AccountingReportController::class, 'salesByStorePdf'])
         ->name('dashboard-api.reports.accounting.sales-by-store.pdf');
     Route::get('/dashboard-api/orders/product', [OrderController::class, 'product'])
@@ -292,6 +297,21 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('reports.accounting.sales-by-store');
     Route::get('/reportes/suscriptores', fn () => Inertia::render('Reports/Subscribers'))
         ->name('reports.subscribers');
+    Route::get('/reportes/gerencias/venta-dia', function (Request $request) {
+        abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA_GERE'), 403);
+
+        return Inertia::render('Reports/ManagementDailySales');
+    })->name('reports.management.daily-sales');
+    Route::get('/reportes/gerencias/venta-mes', function (Request $request) {
+        abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA_GERE'), 403);
+
+        return Inertia::render('Modules/Placeholder', ['title' => 'Reportes / Gerencias / Venta x Mes']);
+    });
+    Route::get('/reportes/gerencias/cyber-monday', function (Request $request) {
+        abort_unless(DashboardAccess::can($request->session()->get('stj.user'), 'MENU_REPO_VENTA_GERE'), 403);
+
+        return Inertia::render('Modules/Placeholder', ['title' => 'Reportes / Gerencias / Cyber Monday']);
+    });
     Route::get('/configuracion/usuarios-paises', fn () => Inertia::render('Settings/UserCountryAccess'))
         ->name('settings.user-country-access');
     Route::get('/configuracion/push', fn () => Inertia::render('Settings/PushNotifications'))

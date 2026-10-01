@@ -23,7 +23,7 @@ class DashboardApiClient
     {
         $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
             ->timeout(120)->withToken((string) config('stj.api.dashboard_token'))
-            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->accept('application/vnd.ms-excel')
             ->get('/dashboard/reports/product-performance/export', array_filter($filters, fn ($value) => $value !== null && $value !== ''));
         $response->throw();
 
@@ -2051,6 +2051,30 @@ class DashboardApiClient
         $response->throw();
 
         return $response->json('data') ?? [];
+    }
+
+    public function managementDailySales(array $filters): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->acceptJson()
+            ->get('/dashboard/reports/management/daily-sales', $filters);
+        $response->throw();
+
+        return $response->json('data') ?? [];
+    }
+
+    public function managementDailySalesExport(array $filters): Response
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->get('/dashboard/reports/management/daily-sales/export', $filters);
+        $response->throw();
+
+        return $response;
     }
 
     public function saveStandaloneAsset(array $data, ?int $asset, ?UploadedFile $image, ?UploadedFile $mobileImage): array
