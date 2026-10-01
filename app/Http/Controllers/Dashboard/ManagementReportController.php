@@ -150,4 +150,35 @@ class ManagementReportController extends Controller
     {
         return ['country' => ['required', 'integer', 'in:1,2,3']];
     }
+
+    public function platformSales(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! $this->allowed($request)) {
+            return $this->forbidden();
+        }
+        $filters = $request->validate($this->platformRules());
+        try {
+            return response()->json(['ok' => true, 'data' => $api->managementPlatformSales($filters)]);
+        } catch (RequestException $exception) {
+            return response()->json(['ok' => false, 'message' => $exception->response?->json('message') ?: 'No fue posible cargar el reporte desde stj-api.'], $exception->response?->status() ?: 502);
+        }
+    }
+
+    public function platformSalesOrders(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! $this->allowed($request)) {
+            return $this->forbidden();
+        }
+        $filters = $request->validate([...$this->platformRules(), 'platform' => ['required', 'in:WEB,APP-IOS,APP-ANDROID,APP-SIN-PLATAFORMA'], 'type' => ['required', 'in:TIENDA,DOMICILIO']]);
+        try {
+            return response()->json(['ok' => true, 'data' => $api->managementPlatformSalesOrders($filters)]);
+        } catch (RequestException $exception) {
+            return response()->json(['ok' => false, 'message' => $exception->response?->json('message') ?: 'No fue posible cargar los pedidos desde stj-api.'], $exception->response?->status() ?: 502);
+        }
+    }
+
+    private function platformRules(): array
+    {
+        return ['country' => ['required', 'string', 'max:3'], 'startDate' => ['required', 'date'], 'endDate' => ['required', 'date']];
+    }
 }

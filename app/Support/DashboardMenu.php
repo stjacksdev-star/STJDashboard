@@ -66,6 +66,7 @@ class DashboardMenu
                         self::item('Venta x Día', '/reportes/gerencias/venta-dia'),
                         self::item('Venta x Mes', '/reportes/gerencias/venta-mes'),
                         self::item('Cyber Monday', '/reportes/gerencias/cyber-monday'),
+                        self::item('Venta x Plataforma', '/reportes/gerencias/venta-plataforma'),
                     ], 'MENU_REPO_VENTA_GERE'),
                 ],
             ],
