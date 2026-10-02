@@ -512,6 +512,22 @@ class OrderController extends Controller
         }
     }
 
+    public function statusManagement(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! $this->isRoot($request)) return response()->json(['ok' => false, 'message' => 'Solo un usuario ROOT puede acceder a esta gestion.'], 403);
+        $validated = $request->validate(['search' => ['required', 'string', 'max:80']]);
+        try { return response()->json(['ok' => true, 'data' => $api->statusManagement($validated['search'], $this->actor($request))]); }
+        catch (RequestException $exception) { return response()->json(['ok' => false, 'message' => $exception->response?->json('message') ?: 'No fue posible consultar el pedido.', 'errors' => $exception->response?->json('errors') ?: []], $exception->response?->status() ?: 502); }
+    }
+
+    public function updateStatusManagement(Request $request, DashboardApiClient $api): JsonResponse
+    {
+        if (! $this->isRoot($request)) return response()->json(['ok' => false, 'message' => 'Solo un usuario ROOT puede acceder a esta gestion.'], 403);
+        $validated = $request->validate(['search' => ['required', 'string', 'max:80'], 'status' => ['required', 'string', 'max:80'], 'reason' => ['required', 'string', 'max:500']]);
+        try { return response()->json(['ok' => true, 'data' => $api->updateStatusManagement($validated, $this->actor($request)), 'message' => 'Estado del pedido actualizado y registrado correctamente.']); }
+        catch (RequestException $exception) { return response()->json(['ok' => false, 'message' => $exception->response?->json('message') ?: 'No fue posible cambiar el estado.', 'errors' => $exception->response?->json('errors') ?: []], $exception->response?->status() ?: 502); }
+    }
+
     public function updateData(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): JsonResponse
     {
         $validated = $request->validate([

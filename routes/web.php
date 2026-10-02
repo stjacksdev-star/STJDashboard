@@ -225,6 +225,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.orders.shipping-management.lookup');
     Route::post('/dashboard-api/orders/shipping-management', [OrderController::class, 'updateShippingManagement'])
         ->name('dashboard-api.orders.shipping-management.update');
+    Route::post('/dashboard-api/orders/status-management/lookup', [OrderController::class, 'statusManagement']);
+    Route::post('/dashboard-api/orders/status-management', [OrderController::class, 'updateStatusManagement']);
     Route::post('/dashboard-api/orders/lines/{line}', [OrderController::class, 'updateLine'])
         ->name('dashboard-api.orders.lines.update');
     Route::post('/dashboard-api/orders/process', [OrderController::class, 'process'])

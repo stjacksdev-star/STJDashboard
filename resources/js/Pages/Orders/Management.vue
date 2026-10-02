@@ -11,6 +11,14 @@ const error = ref('');
 const success = ref('');
 const order = ref(null);
 const form = ref(defaultForm());
+const showStatusModal = ref(false);
+const statusSearch = ref('');
+const statusOrder = ref(null);
+const statusForm = ref({ status: '', reason: '' });
+const statusLoading = ref(false);
+const statusSaving = ref(false);
+const statusError = ref('');
+const statusSuccess = ref('');
 
 function defaultForm() {
     return {
@@ -135,6 +143,34 @@ async function save() {
         saving.value = false;
     }
 }
+
+function openStatusModal() {
+    showStatusModal.value = true; statusSearch.value = ''; statusOrder.value = null;
+    statusForm.value = { status: '', reason: '' }; statusError.value = ''; statusSuccess.value = '';
+}
+function closeStatusModal() { if (!statusLoading.value && !statusSaving.value) showStatusModal.value = false; }
+async function lookupStatus() {
+    if (!statusSearch.value.trim()) { statusError.value = 'Ingrese el STJ o ID del pedido.'; return; }
+    statusLoading.value = true; statusError.value = ''; statusSuccess.value = '';
+    try {
+        const response = await window.axios.post('/dashboard-api/orders/status-management/lookup', { search: statusSearch.value.trim() });
+        statusOrder.value = response.data.data;
+        const options = statusOrder.value.allowedStatuses || [];
+        statusForm.value = { status: options.includes('RECIBIDO') && statusOrder.value.status !== 'RECIBIDO' ? 'RECIBIDO' : (options.find(value => value !== statusOrder.value.status) || ''), reason: '' };
+    } catch (exception) { statusError.value = exception.response?.data?.message || 'No fue posible consultar el pedido.'; }
+    finally { statusLoading.value = false; }
+}
+async function saveStatus() {
+    if (!statusForm.value.reason.trim()) { statusError.value = 'El motivo del cambio es obligatorio.'; return; }
+    if (!window.confirm(`¿Cambiar el pedido ${statusOrder.value.reference || statusOrder.value.orderId} de ${statusOrder.value.status} a ${statusForm.value.status}?`)) return;
+    statusSaving.value = true; statusError.value = ''; statusSuccess.value = '';
+    try {
+        const response = await window.axios.post('/dashboard-api/orders/status-management', { search: statusSearch.value.trim(), ...statusForm.value });
+        statusOrder.value = response.data.data; statusForm.value.status = ''; statusForm.value.reason = '';
+        statusSuccess.value = response.data.message;
+    } catch (exception) { statusError.value = exception.response?.data?.message || 'No fue posible cambiar el estado.'; }
+    finally { statusSaving.value = false; }
+}
 </script>
 
 <template>
@@ -159,8 +195,44 @@ async function save() {
                         Consultar
                     </button>
                 </article>
+                <article class="app-surface flex min-h-56 flex-col rounded-lg border p-6">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-50 text-xl text-amber-600">↻</div>
+                    <h2 class="app-text mt-5 text-xl font-semibold">Cambiar estado de pedido</h2>
+                    <p class="app-muted mt-2 flex-1 text-sm leading-6">Busque por referencia STJ o ID, seleccione un estado válido y registre el motivo obligatorio.</p>
+                    <button type="button" class="mt-5 self-start rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700" @click="openStatusModal">Gestionar</button>
+                </article>
             </div>
         </section>
+
+        <div v-if="showStatusModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" @click.self="closeStatusModal">
+            <div class="app-surface w-full max-w-2xl rounded-xl border shadow-2xl">
+                <div class="flex items-center justify-between border-b px-6 py-4">
+                    <div><p class="app-primary-text text-xs font-semibold uppercase">Gestión ROOT</p><h2 class="app-text mt-1 text-xl font-semibold">Cambiar estado de pedido</h2></div>
+                    <button type="button" class="app-muted text-2xl" @click="closeStatusModal">×</button>
+                </div>
+                <div class="p-6">
+                    <form class="flex gap-3" @submit.prevent="lookupStatus">
+                        <input v-model="statusSearch" class="app-surface app-text h-11 flex-1 rounded-md border px-3" maxlength="80" placeholder="Referencia STJ o ID del pedido" required />
+                        <button class="rounded-md bg-blue-600 px-5 text-sm font-semibold text-white disabled:opacity-60" :disabled="statusLoading">{{ statusLoading ? 'Consultando...' : 'Consultar' }}</button>
+                    </form>
+                    <div v-if="statusOrder" class="mt-5">
+                        <div class="app-surface-soft grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
+                            <p><span class="app-muted text-xs uppercase">Pedido</span><br><strong>#{{ statusOrder.orderId }} · {{ statusOrder.reference || 'Sin STJ' }}</strong></p>
+                            <p><span class="app-muted text-xs uppercase">Estado actual</span><br><strong>{{ statusOrder.status }}</strong></p>
+                            <p><span class="app-muted text-xs uppercase">País</span><br>{{ statusOrder.country || statusOrder.countryId }}</p>
+                            <p><span class="app-muted text-xs uppercase">Pago / checkout</span><br>{{ statusOrder.paymentStatus || 'N/D' }} · {{ statusOrder.checkout || 'N/D' }}</p>
+                        </div>
+                        <form class="mt-5 space-y-4" @submit.prevent="saveStatus">
+                            <label class="field"><span>Nuevo estado</span><select v-model="statusForm.status" required><option value="" disabled>Seleccione</option><option v-for="item in statusOrder.allowedStatuses" :key="item" :value="item" :disabled="item === statusOrder.status">{{ item }}</option></select></label>
+                            <label class="field"><span>Motivo obligatorio</span><textarea v-model="statusForm.reason" maxlength="500" rows="4" required placeholder="Explique por qué se realiza el cambio" /></label>
+                            <div class="flex justify-end"><button class="rounded-md bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60" :disabled="statusSaving || !statusForm.status || !statusForm.reason.trim()">{{ statusSaving ? 'Guardando...' : 'Cambiar estado' }}</button></div>
+                        </form>
+                    </div>
+                    <div v-if="statusError" class="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{{ statusError }}</div>
+                    <div v-if="statusSuccess" class="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{{ statusSuccess }}</div>
+                </div>
+            </div>
+        </div>
 
         <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" @click.self="closeModal">
             <div class="app-surface max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-xl border shadow-2xl">

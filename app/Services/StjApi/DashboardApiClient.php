@@ -1024,6 +1024,24 @@ class DashboardApiClient
         return $response->json('data') ?? [];
     }
 
+    public function statusManagement(string $search, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()
+            ->post('/dashboard/orders/status-management/lookup', ['search' => $search, 'actor' => $actor]);
+        $response->throw();
+        return $response->json('data') ?? [];
+    }
+
+    public function updateStatusManagement(array $data, array $actor = []): array
+    {
+        $response = Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))->timeout((int) config('stj.api.timeout'))
+            ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()
+            ->post('/dashboard/orders/status-management', [...$data, 'actor' => $actor]);
+        $response->throw();
+        return $response->json('data') ?? [];
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @param  array<string, mixed>  $actor
