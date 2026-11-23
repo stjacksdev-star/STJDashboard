@@ -9,6 +9,7 @@ use App\Support\DashboardAccess;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class AppointmentController extends Controller
 {
@@ -79,8 +80,44 @@ class AppointmentController extends Controller
         }
     }
 
+    public function export(Request $request, DashboardApiClient $api, UserCountryAccessService $countryAccess): Response|JsonResponse
+    {
+        if (! DashboardAccess::can($request->session()->get('stj.user'), 'MENU_CITAS')) {
+            return $this->forbidden();
+        }
+
+        $validated = $request->validate([
+            'country' => ['required', 'string', 'max:3'],
+            'store' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $user = (array) $request->session()->get('stj.user', []);
+        $permissions = DashboardAccess::permissions($user);
+
+        if (! $this->canUseGlobalFilters($permissions)) {
+            $validated['country'] = (string) ($user['idPais'] ?? $validated['country']);
+            $validated['store'] = (string) ($user['storeId'] ?? $user['storeCode'] ?? $user['tiendas'] ?? '');
+        }
+
+        if (! $countryAccess->canAccessCountry($user, $validated['country'])) {
+            return $this->countryForbidden();
+        }
+
+        try {
+            $response = $api->exportAppointments($validated);
+
+            return response($response->body(), 200, [
+                'Content-Type' => $response->header('Content-Type') ?: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => $response->header('Content-Disposition') ?: 'attachment; filename="citas.xlsx"',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]);
+        } catch (RequestException $exception) {
+            return $this->apiError($exception, 'No fue posible exportar las citas desde stj-api.');
+        }
+    }
+
     /**
-     * @param array<int, string> $permissions
+     * @param  array<int, string>  $permissions
      */
     private function canUseGlobalFilters(array $permissions): bool
     {

@@ -764,6 +764,24 @@ class DashboardApiClient
     }
 
     /**
+     * @param  array<string, mixed>  $filters
+     *
+     * @throws RequestException
+     */
+    public function exportAppointments(array $filters): Response
+    {
+        return Http::baseUrl(rtrim((string) config('stj.api.base_url'), '/'))
+            ->timeout(max(30, (int) config('stj.api.timeout')))
+            ->withToken((string) config('stj.api.dashboard_token'))
+            ->accept('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->get('/dashboard/appointments/export', array_filter([
+                'country' => $filters['country'] ?? null,
+                'store' => $filters['store'] ?? null,
+            ], fn ($value) => filled($value)))
+            ->throw();
+    }
+
+    /**
      * @return array<string, mixed>
      *
      * @throws RequestException
@@ -1030,6 +1048,7 @@ class DashboardApiClient
             ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()
             ->post('/dashboard/orders/status-management/lookup', ['search' => $search, 'actor' => $actor]);
         $response->throw();
+
         return $response->json('data') ?? [];
     }
 
@@ -1039,6 +1058,7 @@ class DashboardApiClient
             ->withToken((string) config('stj.api.dashboard_token'))->acceptJson()
             ->post('/dashboard/orders/status-management', [...$data, 'actor' => $actor]);
         $response->throw();
+
         return $response->json('data') ?? [];
     }
 

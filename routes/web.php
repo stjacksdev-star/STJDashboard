@@ -131,6 +131,8 @@ Route::middleware(EnsureCasAuthenticated::class)->group(function () {
         ->name('dashboard-api.appointments.catalog');
     Route::get('/dashboard-api/appointments', [AppointmentController::class, 'index'])
         ->name('dashboard-api.appointments.index');
+    Route::get('/dashboard-api/appointments/export', [AppointmentController::class, 'export'])
+        ->name('dashboard-api.appointments.export');
     Route::get('/dashboard-api/claims', [ClaimController::class, 'index'])
         ->name('dashboard-api.claims.index');
     Route::get('/dashboard-api/claims/export', [ClaimController::class, 'export'])

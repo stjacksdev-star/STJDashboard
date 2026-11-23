@@ -9,6 +9,7 @@ DataTable.use(DataTablesCore);
 
 const page = usePage();
 const loading = ref(false);
+const exporting = ref(false);
 const catalogLoading = ref(true);
 const error = ref('');
 const catalogError = ref('');
@@ -27,7 +28,9 @@ const canUseGlobalFilters = computed(() =>
 const showFilters = computed(() => canUseGlobalFilters.value);
 const resolvedStoreLabel = computed(() =>
     report.value.filters?.storeName
-        ? `${report.value.filters.storeName} (${report.value.filters.store || 'N/D'})`
+        ? report.value.filters.store
+            ? `${report.value.filters.storeName} (${report.value.filters.store})`
+            : report.value.filters.storeName
         : user.value?.storeLabel || user.value?.tiendas || 'N/D',
 );
 
@@ -43,6 +46,7 @@ const columns = [
     { data: 'name', title: 'Nombre' },
     { data: 'phone', title: 'Telefono' },
     { data: 'email', title: 'Correo' },
+    { data: 'storeLabel', title: 'Tienda' },
     { data: 'schedule', title: 'Horario' },
     { data: 'day', title: 'Dia' },
     { data: 'emailSentLabel', title: 'Correo enviado', width: '130px' },
@@ -51,7 +55,7 @@ const columns = [
 const options = {
     pageLength: 25,
     lengthMenu: [10, 25, 50, 100],
-    order: [[6, 'asc']],
+    order: [[6, 'asc'], [8, 'asc'], [7, 'asc'], [0, 'asc']],
     autoWidth: false,
     language: {
         search: 'Buscar:',
@@ -73,6 +77,9 @@ const options = {
 const rows = computed(() =>
     report.value.rows.map((row) => ({
         ...row,
+        storeLabel: row.store?.name
+            ? `${row.store.name} (${row.store.code || 'N/D'})`
+            : 'N/D',
         registeredAtLabel: formatDateTime(row.registeredAt),
         emailSentLabel: row.emailSent ? '<span class="stj-pill stj-pill-on">SI</span>' : '<span class="stj-pill">NO</span>',
     })),
@@ -141,6 +148,16 @@ async function fetchAppointments() {
 
 async function submitFilters() {
     await fetchAppointments();
+}
+
+function exportExcel() {
+    exporting.value = true;
+    const params = new URLSearchParams({
+        country: activeCountry(),
+        store: activeStore(),
+    });
+    window.location.href = `/dashboard-api/appointments/export?${params}`;
+    window.setTimeout(() => { exporting.value = false; }, 1500);
 }
 
 function activeCountry() {
@@ -220,6 +237,7 @@ watch(() => filters.value.country, async () => {
                             <span class="app-muted text-sm font-medium">Tienda</span>
                             <select v-model="filters.store" required class="stj-input mt-2" :disabled="catalogLoading || stores.length === 0">
                                 <option value="">Seleccione</option>
+                                <option value="ALL">Todas las tiendas</option>
                                 <option v-for="store in stores" :key="store.storeId" :value="String(store.storeId)">
                                     {{ store.store }}
                                 </option>
@@ -261,7 +279,17 @@ watch(() => filters.value.country, async () => {
                 <div class="app-border-soft border-b px-5 py-4">
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <h2 class="app-text text-lg font-semibold">Listado</h2>
-                        <p class="app-muted text-sm">{{ report.rows.length }} citas cargadas</p>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <p class="app-muted text-sm">{{ report.rows.length }} citas cargadas</p>
+                            <button
+                                type="button"
+                                class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                :disabled="exporting || loading || report.rows.length === 0"
+                                @click="exportExcel"
+                            >
+                                {{ exporting ? 'Exportando...' : 'Descargar Excel' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
